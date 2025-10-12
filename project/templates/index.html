@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}NGO Connect - Connecting NGOs, Volunteers, and Donors{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="container" style="display:flex; align-items:center; justify-content:space-between; gap:2rem; flex-wrap:wrap;">
+        <div style="flex:1 1 420px; min-width:320px;">
+            <h1 style="font-size:3rem; font-weight:800; line-height:1.1; margin-bottom:1rem;">Welcome to the NGO Hub</h1>
+            <p style="font-size:1.1rem; color:#eaeaea; margin-bottom:1.5rem; max-width:560px;">Discover, support, and collaborate with inspiring organizations. Create real-world impact through donations and volunteering.</p>
+            <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+                <a href="{{ url_for('ngos_directory') }}" class="btn btn-primary btn-rounded btn-glow">Discover more</a>
+                <a href="{{ url_for('register') }}" class="btn btn-accent btn-rounded">Sign up</a>
+            </div>
+        </div>
+        <div style="flex:1 1 420px; min-width:320px; display:flex; justify-content:center;">
+            <img src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?q=80&w=1200&auto=format&fit=crop" alt="Volunteers collaborating" style="width:100%; max-width:520px;" class="image-rounded"/>
+        </div>
+    </div>
+</section>
+
+<section>
+    <div class="container" style="max-width: 1100px; margin: 3rem auto;">
+        <h2 class="section-heading">We Offer Best Services</h2>
+        <div class="grid grid-4" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1.5rem; margin-top:2rem;">
+            <div class="card card-elevated" style="text-align:center;">
+                <div style="font-size:1.8rem; margin-bottom:0.5rem; color:#ef4444;"><i class="fa-solid fa-hand-holding-heart"></i></div>
+                <h3>Donations</h3>
+                <p class="muted">Support causes you care about</p>
+            </div>
+            <div class="card card-elevated" style="text-align:center;">
+                <div style="font-size:1.8rem; margin-bottom:0.5rem; color:#6366f1;"><i class="fa-solid fa-diagram-project"></i></div>
+                <h3>Projects</h3>
+                <p class="muted">Track progress and outcomes</p>
+            </div>
+            <div class="card card-elevated" style="text-align:center;">
+                <div style="font-size:1.8rem; margin-bottom:0.5rem; color:#f59e0b;"><i class="fa-solid fa-calendar-check"></i></div>
+                <h3>Events</h3>
+                <p class="muted">Volunteer with flexible slots</p>
+            </div>
+            <div class="card card-elevated" style="text-align:center;">
+                <div style="font-size:1.8rem; margin-bottom:0.5rem; color:#14b8a6;"><i class="fa-solid fa-sliders"></i></div>
+                <h3>Customization</h3>
+                <p class="muted">Tailored experiences for NGOs</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section>
+    <div class="container" style="max-width: 1000px; margin: 3rem auto;">
+        <h2 class="section-heading">Our Journey</h2>
+        
+        <div class="timeline" style="position: relative;">
+            <!-- Timeline line -->
+            <div style="position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; background: linear-gradient(180deg, #667eea 0%, #764ba2 100%); transform: translateX(-50%);"></div>
+            
+            <!-- Timeline items -->
+            <div class="timeline-item" style="display: flex; margin-bottom: 3rem; align-items: center;">
+                <div style="flex: 1; text-align: right; padding-right: 2rem;">
+                    <h3 style="color: #667eea; margin-bottom: 0.5rem;">Platform Launch</h3>
+                    <p style="color: #666; margin-bottom: 0.25rem;">January 2023</p>
+                    <p style="color: #555;">NGO Connect platform officially launched with basic NGO registration and volunteer matching features.</p>
+                </div>
+                <div style="width: 20px; height: 20px; background: #667eea; border-radius: 50%; border: 4px solid white; box-shadow: 0 0 0 2px #667eea; position: relative; z-index: 1;"></div>
+                <div style="flex: 1; padding-left: 2rem;"></div>
+            </div>
+            
+            <div class="timeline-item" style="display: flex; margin-bottom: 3rem; align-items: center;">
+                <div style="flex: 1; text-align: right; padding-right: 2rem;"></div>
+                <div style="width: 20px; height: 20px; background: #764ba2; border-radius: 50%; border: 4px solid white; box-shadow: 0 0 0 2px #764ba2; position: relative; z-index: 1;"></div>
+                <div style="flex: 1; padding-left: 2rem;">
+                    <h3 style="color: #764ba2; margin-bottom: 0.5rem;">Event Management System</h3>
+                    <p style="color: #666; margin-bottom: 0.25rem;">May 2023</p>
+                    <p style="color: #555;">Introduced comprehensive event creation and 2-hour time slot booking system for better volunteer coordination.</p>
+                </div>
+            </div>
+            
+            <div class="timeline-item" style="display: flex; margin-bottom: 3rem; align-items: center;">
+                <div style="flex: 1; text-align: right; padding-right: 2rem;">
+                    <h3 style="color: #667eea; margin-bottom: 0.5rem;">Donor Integration</h3>
+                    <p style="color: #666; margin-bottom: 0.25rem;">September 2023</p>
+                    <p style="color: #555;">Added donor profiles and donation tracking to support NGO funding and project sustainability.</p>
+                </div>
+                <div style="width: 20px; height: 20px; background: #667eea; border-radius: 50%; border: 4px solid white; box-shadow: 0 0 0 2px #667eea; position: relative; z-index: 1;"></div>
+                <div style="flex: 1; padding-left: 2rem;"></div>
+            </div>
+            
+            <div class="timeline-item" style="display: flex; margin-bottom: 3rem; align-items: center;">
+                <div style="flex: 1; text-align: right; padding-right: 2rem;"></div>
+                <div style="width: 20px; height: 20px; background: #764ba2; border-radius: 50%; border: 4px solid white; box-shadow: 0 0 0 2px #764ba2; position: relative; z-index: 1;"></div>
+                <div style="flex: 1; padding-left: 2rem;">
+                    <h3 style="color: #764ba2; margin-bottom: 0.5rem;">Analytics & Achievements</h3>
+                    <p style="color: #666; margin-bottom: 0.25rem;">December 2023</p>
+                    <p style="color: #555;">Launched volunteer achievements system, leaderboards, and comprehensive impact analytics for NGOs.</p>
+                </div>
+            </div>
+            
+            <div class="timeline-item" style="display: flex; align-items: center;">
+                <div style="flex: 1; text-align: right; padding-right: 2rem;">
+                    <h3 style="color: #667eea; margin-bottom: 0.5rem;">Mobile App & API</h3>
+                    <p style="color: #666; margin-bottom: 0.25rem;">Coming Soon</p>
+                    <p style="color: #555;">Mobile application and enhanced API features for seamless volunteer engagement on the go.</p>
+                </div>
+                <div style="width: 20px; height: 20px; background: #e2e8f0; border-radius: 50%; border: 4px solid white; box-shadow: 0 0 0 2px #e2e8f0; position: relative; z-index: 1;"></div>
+                <div style="flex: 1; padding-left: 2rem;"></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section>
+    <div class="container" style="max-width: 1200px;">
+        <h2 class="section-heading">Donate For NGOs</h2>
+        <div class="grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:1.5rem; margin-top:1rem;">
+            {% for i in range(0,4) %}
+            <div class="card card-elevated" style="padding:0; overflow:hidden;">
+                <img src="https://images.unsplash.com/photo-1526256262350-7da7584cf5eb?q=80&w=1200&auto=format&fit=crop" alt="NGO" style="width:100%; height:180px; object-fit:cover;">
+                <div style="padding:1rem 1.25rem;">
+                    <h3 style="margin-bottom:0.25rem;">Sample NGO {{ i+1 }}</h3>
+                    <p class="muted" style="margin-bottom:0.75rem;">Food donate • Child care</p>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="muted">City, Country</span>
+                        <a href="{{ url_for('ngos_directory') }}" class="btn btn-primary btn-rounded" style="padding:0.5rem 1rem;">Donate</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}
+

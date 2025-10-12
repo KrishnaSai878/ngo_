@@ -1,0 +1,271 @@
+{% extends "admin_base.html" %}
+
+{% block page_title %}Event Management - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-calendar-alt"></i> Event Management</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Events</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="search" class="form-label">Search Events</label>
+                            <input type="text" class="form-control" id="search" name="search" 
+                                   value="{{ search }}" placeholder="Event title or description...">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="">All Status</option>
+                                <option value="upcoming" {% if status_filter == 'upcoming' %}selected{% endif %}>Upcoming</option>
+                                <option value="ongoing" {% if status_filter == 'ongoing' %}selected{% endif %}>Ongoing</option>
+                                <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
+                                <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="category" class="form-label">Category</label>
+                            <select class="form-select" id="category" name="category">
+                                <option value="">All Categories</option>
+                                <option value="food" {% if category_filter == 'food' %}selected{% endif %}>Food Distribution</option>
+                                <option value="education" {% if category_filter == 'education' %}selected{% endif %}>Education</option>
+                                <option value="health" {% if category_filter == 'health' %}selected{% endif %}>Health</option>
+                                <option value="environment" {% if category_filter == 'environment' %}selected{% endif %}>Environment</option>
+                                <option value="community" {% if category_filter == 'community' %}selected{% endif %}>Community</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search"></i> Search
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Events Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Events ({{ events.total }})</h5>
+                    <div>
+                        <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addEventModal">
+                            <i class="fas fa-plus"></i> Add Event
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="exportEvents()">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Event</th>
+                                    <th>Date & Time</th>
+                                    <th>Category</th>
+                                    <th>Status</th>
+                                    <th>Participants</th>
+                                    <th>Organizer</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for event in events.items %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="event-image me-3">
+                                                {% if event.image %}
+                                                    <img src="{{ event.image }}" alt="{{ event.title }}" class="rounded" width="50" height="50">
+                                                {% else %}
+                                                    <div class="avatar-placeholder rounded d-flex align-items-center justify-content-center" 
+                                                         style="width: 50px; height: 50px; background-color: #e3f2fd; color: #1976d2;">
+                                                        <i class="fas fa-calendar"></i>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-0">{{ event.title }}</h6>
+                                                <small class="text-muted">{{ event.description[:60] }}...</small>
+                                                <br>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-map-marker-alt"></i> {{ event.location }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            <i class="fas fa-calendar"></i> {{ event.event_date.strftime('%Y-%m-%d') }}<br>
+                                            <i class="fas fa-clock"></i> {{ event.start_time.strftime('%H:%M') if event.start_time else 'N/A' }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ event.category_color }}">{{ event.category.title() }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if event.status == 'upcoming' else 'primary' if event.status == 'ongoing' else 'secondary' if event.status == 'completed' else 'danger' }}">
+                                            {{ event.status.title() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ event.current_participants }}/{{ event.max_participants }}</span>
+                                        <br>
+                                        <small class="text-muted">{{ event.volunteer_count }} volunteers</small>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if event.organizer_type == 'ngo' %}
+                                                <span class="badge bg-success">NGO</span>
+                                                <br>
+                                                <small class="text-muted">{{ event.organizer_name }}</small>
+                                            {% else %}
+                                                <span class="badge bg-primary">User</span>
+                                                <br>
+                                                <small class="text-muted">{{ event.organizer_name }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{{ url_for('admin_event_details', event_id=event.id) }}" class="btn btn-outline-primary" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            {% if event.status == 'upcoming' %}
+                                            <button type="button" class="btn btn-outline-warning" title="Cancel Event" 
+                                                    onclick="cancelEvent({{ event.id }}, '{{ event.title }}')">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                            {% endif %}
+                                            <button type="button" class="btn btn-outline-danger" title="Delete Event"
+                                                    onclick="deleteEvent({{ event.id }}, '{{ event.title }}')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">
+                                        <i class="fas fa-calendar-alt fa-2x mb-3"></i>
+                                        <p>No events found matching your criteria.</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% if events.pages > 1 %}
+                <div class="card-footer">
+                    <nav aria-label="Event pagination">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if events.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin_events', page=events.prev_num, search=search, status=status_filter, category=category_filter) }}">Previous</a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for page_num in events.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                                {% if page_num %}
+                                    {% if page_num != events.page %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin_events', page=page_num, search=search, status=status_filter, category=category_filter) }}">{{ page_num }}</a>
+                                    </li>
+                                    {% else %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                    {% endif %}
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if events.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin_events', page=events.next_num, search=search, status=status_filter, category=category_filter) }}">Next</a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function cancelEvent(eventId, eventTitle) {
+    if (confirm(`Are you sure you want to cancel event: ${eventTitle}?`)) {
+        fetch(`/admin/events/${eventId}/cancel`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error cancelling event: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error cancelling event: ' + error.message);
+        });
+    }
+}
+
+function deleteEvent(eventId, eventTitle) {
+    if (confirm(`Are you sure you want to delete event: ${eventTitle}? This action cannot be undone.`)) {
+        fetch(`/admin/events/${eventId}/delete`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error deleting event: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error deleting event: ' + error.message);
+        });
+    }
+}
+
+function exportEvents() {
+    window.location.href = '/admin/events/export';
+}
+</script>
+{% endblock %}

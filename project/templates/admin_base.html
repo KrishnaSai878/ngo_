@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - NGO Connect{% endblock %}
+
+{% block head %}
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block page_title %}Admin Dashboard{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/admin.css') }}" rel="stylesheet">
+    
+    <!-- CSRF Token for AJAX requests -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h4><i class="fas fa-shield-alt"></i> Admin Panel</h4>
+            <button class="btn btn-link d-md-none" id="sidebarToggle">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="sidebar-user">
+            <div class="user-avatar">
+                {% if current_user.profile_image %}
+                    <img src="{{ current_user.profile_image }}" alt="{{ current_user.first_name }}">
+                {% else %}
+                    <i class="fas fa-user-shield"></i>
+                {% endif %}
+            </div>
+            <div class="user-info">
+                <h6>{{ current_user.first_name }} {{ current_user.last_name }}</h6>
+                <small>{{ current_user.email }}</small>
+                <div class="user-role">Administrator</div>
+            </div>
+        </div>
+
+        <ul class="sidebar-nav">
+            <li class="nav-item">
+                <a class="nav-link active" href="{{ url_for('admin_dashboard') }}">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            
+            {% if 'manage_users' in admin_permissions %}
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('admin_users') }}">
+                    <i class="fas fa-users"></i>
+                    <span>User Management</span>
+                    <span class="badge bg-danger ms-auto">{{ stats.pending_users }}</span>
+                </a>
+            </li>
+            {% endif %}
+            
+            {% if 'manage_ngos' in admin_permissions %}
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('admin_ngos') }}">
+                    <i class="fas fa-hand-holding-heart"></i>
+                    <span>NGO Management</span>
+                    <span class="badge bg-warning ms-auto">{{ stats.pending_ngos }}</span>
+                </a>
+            </li>
+            {% endif %}
+            
+            {% if 'manage_events' in admin_permissions %}
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('admin_events') }}">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>Events Management</span>
+                </a>
+            </li>
+            {% endif %}
+            
+            {% if 'manage_content' in admin_permissions %}
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('admin_content') }}">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Content Management</span>
+                </a>
+            </li>
+            {% endif %}
+            
+            {% if 'view_analytics' in admin_permissions %}
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('admin_analytics') }}">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Analytics</span>
+                </a>
+            </li>
+            {% endif %}
+            
+            {% if 'view_audit_logs' in admin_permissions %}
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('admin_audit_logs') }}">
+                    <i class="fas fa-history"></i>
+                    <span>Audit Logs</span>
+                </a>
+            </li>
+            {% endif %}
+            
+            {% if 'manage_roles' in admin_permissions %}
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('admin_roles') }}">
+                    <i class="fas fa-user-tag"></i>
+                    <span>Role Management</span>
+                </a>
+            </li>
+            {% endif %}
+            
+            <li class="nav-item mt-auto">
+                <a class="nav-link text-danger" href="{{ url_for('logout') }}">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Navigation -->
+        <nav class="top-navbar">
+            <div class="container-fluid">
+                <div class="d-flex justify-content-between align-items-center">
+                    <button class="btn btn-link d-md-none" id="mobileSidebarToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    
+                    <div class="navbar-title">
+                        <h1 class="h4 mb-0">{% block page_title %}Dashboard{% endblock %}</h1>
+                    </div>
+                    
+                    <div class="navbar-actions">
+                        <div class="dropdown">
+                            <button class="btn btn-link dropdown-toggle" type="button" id="adminDropdown" data-bs-toggle="dropdown">
+                                <i class="fas fa-user-circle"></i>
+                                <span class="d-none d-sm-inline">{{ current_user.first_name }}</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{{ url_for('admin_profile') }}">
+                                    <i class="fas fa-user"></i> Profile
+                                </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin_settings') }}">
+                                    <i class="fas fa-cog"></i> Settings
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
+                                    <i class="fas fa-sign-out-alt"></i> Logout
+                                </a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Content Area -->
+        <main class="content-area">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block admin_content %}{% endblock %}
+        </main>
+
+        <!-- Footer -->
+        <footer class="admin-footer">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-md-6">
+                        <small>&copy; {% now 'local', '%Y' %} NGO Connect. All rights reserved.</small>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <small>Last login: {{ current_user.last_login.strftime('%Y-%m-%d %H:%M') if current_user.last_login else 'Never' }}</small>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+
+<script>
+// Sidebar toggle functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const mobileSidebarToggle = document.getElementById('mobileSidebarToggle');
+    
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', function() {
+            sidebar.classList.remove('show');
+        });
+    }
+    
+    if (mobileSidebarToggle) {
+        mobileSidebarToggle.addEventListener('click', function() {
+            sidebar.classList.add('show');
+        });
+    }
+    
+    // Auto-hide sidebar on mobile after navigation
+    const navLinks = document.querySelectorAll('.sidebar-nav .nav-link');
+    navLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            if (window.innerWidth < 768) {
+                sidebar.classList.remove('show');
+            }
+        });
+    });
+});
+</script>
+
+{% endblock %}

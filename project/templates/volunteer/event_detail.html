@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}{{ event.title }} - Volunteer Opportunity{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="dashboard-header">
+        <h1><i class="fas fa-hands-helping"></i> {{ event.title }}</h1>
+        <p>Hosted by {{ ngo.organization_name }}</p>
+    </div>
+
+    <div class="grid grid-2">
+        <div class="card">
+            <h3>About this Opportunity</h3>
+            <p style="color:#555;">{{ event.description }}</p>
+
+            <div class="grid grid-2" style="margin-top: 1rem;">
+                <div>
+                    <p style="margin: 0.25rem 0; color: #666;">
+                        <i class="fas fa-map-marker-alt"></i> {{ event.location }}
+                    </p>
+                    <p style="margin: 0.25rem 0; color: #666;">
+                        <i class="fas fa-calendar"></i>
+                        {{ event.start_date.strftime('%b %d, %Y') }} - {{ event.end_date.strftime('%b %d, %Y') }}
+                    </p>
+                </div>
+                <div>
+                    <p style="margin: 0.25rem 0; color: #666;">
+                        <i class="fas fa-tag"></i> {{ event.category }}
+                    </p>
+                    <p style="margin: 0.25rem 0; color: #666;">
+                        <i class="fas fa-users"></i> Max per slot: {{ event.max_volunteers }}
+                    </p>
+                </div>
+            </div>
+
+            {% if event.required_skills %}
+            <div style="margin-top: 1rem;">
+                <strong>Required Skills:</strong>
+                {% for skill in event.get_required_skills() %}
+                    <span class="badge">{{ skill }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="card">
+            <h3><i class="fas fa-clock"></i> Available Time Slots</h3>
+            {% if time_slots %}
+            <div class="table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Spots Left</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for slot in time_slots %}
+                        <tr>
+                            <td>{{ slot.start_time.strftime('%B %d, %Y') }}</td>
+                            <td>{{ slot.start_time.strftime('%I:%M %p') }} - {{ slot.end_time.strftime('%I:%M %p') }}</td>
+                            <td>{{ slot.max_volunteers - slot.current_volunteers }}</td>
+                            <td>
+                                <button class="btn btn-primary" onclick="bookSlot({{ event.id }}, {{ slot.id }})">Book</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p style="color:#666;">No available slots right now.</p>
+            {% endif %}
+        </div>
+    </div>
+    <div style="margin-top: 1rem;">
+        <a href="{{ url_for('ngo_opportunities', ngo_id=ngo.id) }}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to Opportunities</a>
+    </div>
+</div>
+
+<script>
+async function bookSlot(eventId, slotId) {
+    try {
+        const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        const response = await fetch('/api/book-slot', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrf
+            },
+            body: JSON.stringify({ event_id: eventId, slot_id: slotId })
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+            alert(result.error || 'Failed to book the slot. Please login as a volunteer.');
+            return;
+        }
+        alert('Slot booked successfully!');
+        window.location.reload();
+    } catch (err) {
+        alert('An unexpected error occurred.');
+        console.error(err);
+    }
+}
+</script>
+{% endblock %}
+
+
+
+
+
+
+
+

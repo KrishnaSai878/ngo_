@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Your Achievements - NGO Connect{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="dashboard-header">
+        <h1><i class="fas fa-trophy"></i> Your Achievements</h1>
+        <p>Milestones based on your hours and points</p>
+    </div>
+
+    <div class="grid grid-2">
+        <div class="card">
+            <h3><i class="fas fa-star"></i> Summary</h3>
+            <p><strong>Total Hours:</strong> {{ total_hours }}</p>
+            <p><strong>Total Points:</strong> {{ total_points }}</p>
+            <p><strong>Completed Bookings:</strong> {{ completed_bookings }}</p>
+        </div>
+
+        <div class="card">
+            <h3><i class="fas fa-medal"></i> Milestones</h3>
+            <ul style="list-style:none; padding:0;">
+                <li style="padding:0.5rem 0; border-bottom:1px solid #e2e8f0;">
+                    <i class="fas fa-check" style="color:#27ae60; margin-right:0.5rem;"></i>
+                    First Volunteer: {% if total_hours > 0 %}Unlocked{% else %}Locked{% endif %}
+                </li>
+                <li style="padding:0.5rem 0; border-bottom:1px solid #e2e8f0;">
+                    <i class="fas fa-clock" style="color:#667eea; margin-right:0.5rem;"></i>
+                    10 Hours: {% if total_hours >= 10 %}Unlocked{% else %}Locked{% endif %}
+                </li>
+                <li style="padding:0.5rem 0;">
+                    <i class="fas fa-star" style="color:#f39c12; margin-right:0.5rem;"></i>
+                    100 Points: {% if total_points >= 100 %}Unlocked{% else %}Locked{% endif %}
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3><i class="fas fa-list"></i> Recent Activity</h3>
+        <div class="table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Event</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Hours</th>
+                        <th>Points</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in recent_bookings %}
+                    <tr>
+                        <td>{{ b.event.title }}</td>
+                        <td>{{ b.created_at.strftime('%b %d, %Y') }}</td>
+                        <td>{{ b.status|title }}</td>
+                        <td>{{ b.hours_worked }}</td>
+                        <td>{{ b.points_earned }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" style="text-align:center; color:#666;">No recent activity</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+

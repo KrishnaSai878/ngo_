@@ -1,0 +1,315 @@
+{% extends "admin_base.html" %}
+
+{% block page_title %}Admin Dashboard{% endblock %}
+
+{% block admin_content %}
+<div class="container-fluid">
+    <!-- Dashboard Stats -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-3">Dashboard Overview</h2>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="stat-icon">
+                        <i class="fas fa-users text-primary"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-number">{{ stats.total_users }}</h3>
+                        <p class="stat-label">Total Users</p>
+                        <small class="stat-change text-success">
+                            <i class="fas fa-arrow-up"></i> +{{ stats.new_users_today }} today
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="stat-icon">
+                        <i class="fas fa-hand-holding-heart text-warning"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-number">{{ stats.total_ngos }}</h3>
+                        <p class="stat-label">Active NGOs</p>
+                        <small class="stat-change text-warning">
+                            <i class="fas fa-clock"></i> {{ stats.pending_ngos }} pending
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar-alt text-info"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-number">{{ stats.total_events }}</h3>
+                        <p class="stat-label">Upcoming Events</p>
+                        <small class="stat-change text-info">
+                            <i class="fas fa-calendar-plus"></i> {{ stats.events_this_week }} this week
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="stat-icon">
+                        <i class="fas fa-chart-line text-success"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3 class="stat-number">{{ stats.total_donations }}</h3>
+                        <p class="stat-label">Total Donations</p>
+                        <small class="stat-change text-success">
+                            <i class="fas fa-dollar-sign"></i> ${{ stats.donations_this_month }} this month
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4 class="mb-3">Quick Actions</h4>
+        </div>
+        
+        <div class="col-lg-2 col-md-4 col-6 mb-3">
+            <a href="{{ url_for('admin_users') }}" class="quick-action-card">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-user-plus fa-2x text-primary mb-2"></i>
+                        <p class="mb-0">Add User</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <div class="col-lg-2 col-md-4 col-6 mb-3">
+            <a href="{{ url_for('admin_ngos') }}" class="quick-action-card">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-plus-circle fa-2x text-warning mb-2"></i>
+                        <p class="mb-0">Add NGO</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <div class="col-lg-2 col-md-4 col-6 mb-3">
+            <a href="{{ url_for('admin_events') }}" class="quick-action-card">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-calendar-plus fa-2x text-info mb-2"></i>
+                        <p class="mb-0">Create Event</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <div class="col-lg-2 col-md-4 col-6 mb-3">
+            <a href="{{ url_for('admin_analytics') }}" class="quick-action-card">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-chart-pie fa-2x text-success mb-2"></i>
+                        <p class="mb-0">Analytics</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <div class="col-lg-2 col-md-4 col-6 mb-3">
+            <a href="{{ url_for('admin_audit_logs') }}" class="quick-action-card">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-search fa-2x text-secondary mb-2"></i>
+                        <p class="mb-0">View Logs</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <div class="col-lg-2 col-md-4 col-6 mb-3">
+            <a href="{{ url_for('admin_settings') }}" class="quick-action-card">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <i class="fas fa-cog fa-2x text-dark mb-2"></i>
+                        <p class="mb-0">Settings</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Recent Activity and Pending Items -->
+    <div class="row">
+        <!-- Recent Activity -->
+        <div class="col-lg-8 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-history"></i> Recent Activity</h5>
+                    <a href="{{ url_for('admin_audit_logs') }}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_activity %}
+                        <div class="activity-list">
+                            {% for activity in recent_activity %}
+                            <div class="activity-item">
+                                <div class="activity-icon">
+                                    <i class="fas fa-{{ activity.icon }}"></i>
+                                </div>
+                                <div class="activity-content">
+                                    <p class="activity-title">{{ activity.title }}</p>
+                                    <p class="activity-description">{{ activity.description }}</p>
+                                    <small class="activity-time">{{ activity.timestamp }}</small>
+                                </div>
+                                <div class="activity-status">
+                                    {% if activity.success %}
+                                        <span class="badge bg-success">Success</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Failed</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-info-circle fa-2x mb-2"></i>
+                            <p>No recent activity to display</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Items -->
+        <div class="col-lg-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Pending Items</h5>
+                </div>
+                <div class="card-body">
+                    <div class="pending-items">
+                        {% if stats.pending_users > 0 %}
+                        <div class="pending-item">
+                            <div class="pending-icon">
+                                <i class="fas fa-user-clock text-warning"></i>
+                            </div>
+                            <div class="pending-content">
+                                <p class="pending-title">User Approvals</p>
+                                <p class="pending-count">{{ stats.pending_users }} pending</p>
+                            </div>
+                            <a href="{{ url_for('admin_users') }}" class="btn btn-sm btn-warning">Review</a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if stats.pending_ngos > 0 %}
+                        <div class="pending-item">
+                            <div class="pending-icon">
+                                <i class="fas fa-building text-warning"></i>
+                            </div>
+                            <div class="pending-content">
+                                <p class="pending-title">NGO Approvals</p>
+                                <p class="pending-count">{{ stats.pending_ngos }} pending</p>
+                            </div>
+                            <a href="{{ url_for('admin_ngos') }}" class="btn btn-sm btn-warning">Review</a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if stats.pending_reports > 0 %}
+                        <div class="pending-item">
+                            <div class="pending-icon">
+                                <i class="fas fa-flag text-danger"></i>
+                            </div>
+                            <div class="pending-content">
+                                <p class="pending-title">Reports</p>
+                                <p class="pending-count">{{ stats.pending_reports }} pending</p>
+                            </div>
+                            <a href="{{ url_for('admin_reports') }}" class="btn btn-sm btn-danger">Review</a>
+                        </div>
+                        {% endif %}
+                        
+                        {% if not stats.pending_users and not stats.pending_ngos and not stats.pending_reports %}
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-check-circle fa-2x mb-2 text-success"></i>
+                            <p>No pending items</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Health -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-heartbeat"></i> System Health</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <div class="health-item">
+                                <div class="health-icon">
+                                    <i class="fas fa-database text-success"></i>
+                                </div>
+                                <div class="health-content">
+                                    <p class="health-title">Database</p>
+                                    <p class="health-status text-success">Online</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="health-item">
+                                <div class="health-icon">
+                                    <i class="fas fa-server text-success"></i>
+                                </div>
+                                <div class="health-content">
+                                    <p class="health-title">Server</p>
+                                    <p class="health-status text-success">Healthy</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="health-item">
+                                <div class="health-icon">
+                                    <i class="fas fa-envelope text-success"></i>
+                                </div>
+                                <div class="health-content">
+                                    <p class="health-title">Email Service</p>
+                                    <p class="health-status text-success">Active</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="health-item">
+                                <div class="health-icon">
+                                    <i class="fas fa-shield-alt text-success"></i>
+                                </div>
+                                <div class="health-content">
+                                    <p class="health-title">Security</p>
+                                    <p class="health-status text-success">Secure</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

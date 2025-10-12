@@ -1,0 +1,626 @@
+{% extends "admin_base.html" %}
+
+{% block page_title %}Content Management - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-file-alt"></i> Content Management</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Content</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Content Tabs -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <ul class="nav nav-tabs" id="contentTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="pages-tab" data-bs-toggle="tab" data-bs-target="#pages" 
+                            type="button" role="tab">Pages</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="blog-tab" data-bs-toggle="tab" data-bs-target="#blog" 
+                            type="button" role="tab">Blog Posts</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="faq-tab" data-bs-toggle="tab" data-bs-target="#faq" 
+                            type="button" role="tab">FAQ</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="newsletter-tab" data-bs-toggle="tab" data-bs-target="#newsletter" 
+                            type="button" role="tab">Newsletter</button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="contentTabContent">
+        <!-- Pages Tab -->
+        <div class="tab-pane fade show active" id="pages" role="tabpanel">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Static Pages</h5>
+                            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addPageModal">
+                                <i class="fas fa-plus"></i> Add Page
+                            </button>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Page</th>
+                                            <th>Slug</th>
+                                            <th>Status</th>
+                                            <th>Last Modified</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for page in pages %}
+                                        <tr>
+                                            <td>
+                                                <h6 class="mb-0">{{ page.title }}</h6>
+                                                <small class="text-muted">{{ page.description[:60] }}...</small>
+                                            </td>
+                                            <td>
+                                                <code>{{ page.slug }}</code>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{{ 'success' if page.status == 'published' else 'warning' }}">
+                                                    {{ page.status.title() }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">{{ page.updated_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm" role="group">
+                                                    <a href="{{ url_for('admin_edit_page', page_id=page.id) }}" class="btn btn-outline-primary" title="Edit">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a href="/page/{{ page.slug }}" target="_blank" class="btn btn-outline-info" title="View">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                    {% if page.status == 'published' %}
+                                                    <button type="button" class="btn btn-outline-warning" title="Unpublish"
+                                                            onclick="togglePageStatus({{ page.id }}, 'draft', '{{ page.title }}')">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                    {% else %}
+                                                    <button type="button" class="btn btn-outline-success" title="Publish"
+                                                            onclick="togglePageStatus({{ page.id }}, 'published', '{{ page.title }}')">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                    {% endif %}
+                                                    <button type="button" class="btn btn-outline-danger" title="Delete"
+                                                            onclick="deletePage({{ page.id }}, '{{ page.title }}')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="5" class="text-center text-muted py-4">
+                                                <i class="fas fa-file-alt fa-2x mb-3"></i>
+                                                <p>No pages found.</p>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Blog Posts Tab -->
+        <div class="tab-pane fade" id="blog" role="tabpanel">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Blog Posts</h5>
+                            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addBlogModal">
+                                <i class="fas fa-plus"></i> Add Post
+                            </button>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Post</th>
+                                            <th>Author</th>
+                                            <th>Status</th>
+                                            <th>Views</th>
+                                            <th>Created</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for post in blog_posts %}
+                                        <tr>
+                                            <td>
+                                                <h6 class="mb-0">{{ post.title }}</h6>
+                                                <small class="text-muted">{{ post.excerpt[:60] }}...</small>
+                                                {% if post.tags %}
+                                                <br>
+                                                <small class="text-muted">
+                                                    {% for tag in post.tags %}
+                                                    <span class="badge bg-secondary">{{ tag }}</span>
+                                                    {% endfor %}
+                                                </small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="avatar-placeholder rounded me-2" 
+                                                         style="width: 30px; height: 30px; background-color: #e3f2fd; color: #1976d2;">
+                                                        {{ post.author_name[0] }}
+                                                    </div>
+                                                    <small>{{ post.author_name }}</small>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{{ 'success' if post.status == 'published' else 'warning' if post.status == 'draft' else 'info' }}">
+                                                    {{ post.status.title() }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-light text-dark">{{ post.view_count }}</span>
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">{{ post.created_at.strftime('%Y-%m-%d') }}</small>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm" role="group">
+                                                    <a href="{{ url_for('admin_edit_blog_post', post_id=post.id) }}" class="btn btn-outline-primary" title="Edit">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    <a href="/blog/{{ post.slug }}" target="_blank" class="btn btn-outline-info" title="View">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                    {% if post.status == 'published' %}
+                                                    <button type="button" class="btn btn-outline-warning" title="Unpublish"
+                                                            onclick="toggleBlogStatus({{ post.id }}, 'draft', '{{ post.title }}')">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                    {% else %}
+                                                    <button type="button" class="btn btn-outline-success" title="Publish"
+                                                            onclick="toggleBlogStatus({{ post.id }}, 'published', '{{ post.title }}')">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                    {% endif %}
+                                                    <button type="button" class="btn btn-outline-danger" title="Delete"
+                                                            onclick="deleteBlogPost({{ post.id }}, '{{ post.title }}')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted py-4">
+                                                <i class="fas fa-blog fa-2x mb-3"></i>
+                                                <p>No blog posts found.</p>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FAQ Tab -->
+        <div class="tab-pane fade" id="faq" role="tabpanel">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">FAQ Items</h5>
+                            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addFAQModal">
+                                <i class="fas fa-plus"></i> Add FAQ
+                            </button>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Question</th>
+                                            <th>Category</th>
+                                            <th>Order</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for faq in faqs %}
+                                        <tr>
+                                            <td>
+                                                <h6 class="mb-0">{{ faq.question }}</h6>
+                                                <small class="text-muted">{{ faq.answer[:60] }}...</small>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{{ faq.category_color }}">{{ faq.category.title() }}</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-light text-dark">{{ faq.order_index }}</span>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{{ 'success' if faq.is_active else 'secondary' }}">
+                                                    {{ 'Active' if faq.is_active else 'Inactive' }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm" role="group">
+                                                    <button type="button" class="btn btn-outline-primary" title="Edit"
+                                                            onclick="editFAQ({{ faq.id }}, '{{ faq.question }}')">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    {% if faq.is_active %}
+                                                    <button type="button" class="btn btn-outline-warning" title="Deactivate"
+                                                            onclick="toggleFAQStatus({{ faq.id }}, false, '{{ faq.question }}')">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                    {% else %}
+                                                    <button type="button" class="btn btn-outline-success" title="Activate"
+                                                            onclick="toggleFAQStatus({{ faq.id }}, true, '{{ faq.question }}')">
+                                                        <i class="fas fa-check"></i>
+                                                    </button>
+                                                    {% endif %}
+                                                    <button type="button" class="btn btn-outline-danger" title="Delete"
+                                                            onclick="deleteFAQ({{ faq.id }}, '{{ faq.question }}')">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="5" class="text-center text-muted py-4">
+                                                <i class="fas fa-question-circle fa-2x mb-3"></i>
+                                                <p>No FAQ items found.</p>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Newsletter Tab -->
+        <div class="tab-pane fade" id="newsletter" role="tabpanel">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Newsletter Subscribers</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Email</th>
+                                            <th>Name</th>
+                                            <th>Status</th>
+                                            <th>Subscribed</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for subscriber in newsletter_subscribers %}
+                                        <tr>
+                                            <td>{{ subscriber.email }}</td>
+                                            <td>{{ subscriber.name or 'N/A' }}</td>
+                                            <td>
+                                                <span class="badge bg-{{ 'success' if subscriber.is_active else 'secondary' }}">
+                                                    {{ 'Active' if subscriber.is_active else 'Unsubscribed' }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">{{ subscriber.created_at.strftime('%Y-%m-%d') }}</small>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm" role="group">
+                                                    <button type="button" class="btn btn-outline-danger" title="Unsubscribe"
+                                                            onclick="unsubscribeNewsletter({{ subscriber.id }}, '{{ subscriber.email }}')">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% else %}
+                                        <tr>
+                                            <td colspan="5" class="text-center text-muted py-4">
+                                                <i class="fas fa-envelope fa-2x mb-3"></i>
+                                                <p>No newsletter subscribers found.</p>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Send Newsletter</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="newsletterForm">
+                                <div class="mb-3">
+                                    <label for="newsletterSubject" class="form-label">Subject</label>
+                                    <input type="text" class="form-control" id="newsletterSubject" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="newsletterContent" class="form-label">Content</label>
+                                    <textarea class="form-control" id="newsletterContent" rows="6" required></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="sendTestEmail">
+                                        <label class="form-check-label" for="sendTestEmail">
+                                            Send test email first
+                                        </label>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-paper-plane"></i> Send Newsletter
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">Statistics</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Total Subscribers:</span>
+                                <strong>{{ newsletter_stats.total }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Active Subscribers:</span>
+                                <strong>{{ newsletter_stats.active }}</strong>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Last Newsletter:</span>
+                                <strong>{{ newsletter_stats.last_sent or 'Never' }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function togglePageStatus(pageId, newStatus, pageTitle) {
+    const action = newStatus === 'published' ? 'publish' : 'unpublish';
+    if (confirm(`Are you sure you want to ${action} page: ${pageTitle}?`)) {
+        fetch(`/admin/content/pages/${pageId}/toggle-status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({status: newStatus})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error updating page status: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error updating page status: ' + error.message);
+        });
+    }
+}
+
+function deletePage(pageId, pageTitle) {
+    if (confirm(`Are you sure you want to delete page: ${pageTitle}? This action cannot be undone.`)) {
+        fetch(`/admin/content/pages/${pageId}/delete`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error deleting page: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error deleting page: ' + error.message);
+        });
+    }
+}
+
+function toggleBlogStatus(postId, newStatus, postTitle) {
+    const action = newStatus === 'published' ? 'publish' : 'unpublish';
+    if (confirm(`Are you sure you want to ${action} blog post: ${postTitle}?`)) {
+        fetch(`/admin/content/blog/${postId}/toggle-status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({status: newStatus})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error updating blog post status: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error updating blog post status: ' + error.message);
+        });
+    }
+}
+
+function deleteBlogPost(postId, postTitle) {
+    if (confirm(`Are you sure you want to delete blog post: ${postTitle}? This action cannot be undone.`)) {
+        fetch(`/admin/content/blog/${postId}/delete`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error deleting blog post: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error deleting blog post: ' + error.message);
+        });
+    }
+}
+
+function toggleFAQStatus(faqId, isActive, question) {
+    const action = isActive ? 'activate' : 'deactivate';
+    if (confirm(`Are you sure you want to ${action} FAQ: ${question}?`)) {
+        fetch(`/admin/content/faq/${faqId}/toggle-status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({is_active: isActive})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error updating FAQ status: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error updating FAQ status: ' + error.message);
+        });
+    }
+}
+
+function deleteFAQ(faqId, question) {
+    if (confirm(`Are you sure you want to delete FAQ: ${question}? This action cannot be undone.`)) {
+        fetch(`/admin/content/faq/${faqId}/delete`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error deleting FAQ: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error deleting FAQ: ' + error.message);
+        });
+    }
+}
+
+function unsubscribeNewsletter(subscriberId, email) {
+    if (confirm(`Are you sure you want to unsubscribe: ${email}?`)) {
+        fetch(`/admin/content/newsletter/${subscriberId}/unsubscribe`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error unsubscribing: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error unsubscribing: ' + error.message);
+        });
+    }
+}
+
+document.getElementById('newsletterForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const subject = document.getElementById('newsletterSubject').value;
+    const content = document.getElementById('newsletterContent').value;
+    const sendTest = document.getElementById('sendTestEmail').checked;
+    
+    if (confirm('Are you sure you want to send this newsletter to all subscribers?')) {
+        fetch('/admin/content/newsletter/send', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({
+                subject: subject,
+                content: content,
+                send_test: sendTest
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Newsletter sent successfully!');
+                location.reload();
+            } else {
+                alert('Error sending newsletter: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error sending newsletter: ' + error.message);
+        });
+    }
+});
+</script>
+{% endblock %}

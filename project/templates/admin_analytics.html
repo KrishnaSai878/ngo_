@@ -1,0 +1,343 @@
+{% extends "admin_base.html" %}
+
+{% block page_title %}Analytics - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-chart-bar"></i> Analytics Dashboard</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Analytics</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Key Metrics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-primary">
+                        <i class="fas fa-users fa-2x mb-2"></i>
+                        <div class="display-4">{{ analytics.total_users }}</div>
+                        <p class="text-muted mb-0">Total Users</p>
+                    </h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-success">
+                        <i class="fas fa-hand-holding-heart fa-2x mb-2"></i>
+                        <div class="display-4">{{ analytics.total_ngos }}</div>
+                        <p class="text-muted mb-0">Active NGOs</p>
+                    </h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-info">
+                        <i class="fas fa-calendar-alt fa-2x mb-2"></i>
+                        <div class="display-4">{{ analytics.total_events }}</div>
+                        <p class="text-muted mb-0">Total Events</p>
+                    </h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">
+                        <i class="fas fa-money-bill-wave fa-2x mb-2"></i>
+                        <div class="display-4">${{ "%.0f"|format(analytics.total_donations) }}</div>
+                        <p class="text-muted mb-0">Total Donations</p>
+                    </h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-pie"></i> User Registration Trends
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="userRegistrationChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-line"></i> User Roles Distribution
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="userRolesChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity and Engagement -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-area"></i> Platform Activity (Last 30 Days)
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="activityChart" width="600" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-tachometer-alt"></i> Key Performance Indicators
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>User Growth Rate</span>
+                            <strong>{{ "%.1f"|format(analytics.user_growth_rate) }}%</strong>
+                        </div>
+                        <div class="progress" style="height: 5px;">
+                            <div class="progress-bar bg-primary" style="width: {{ analytics.user_growth_rate }}%"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Event Participation Rate</span>
+                            <strong>{{ "%.1f"|format(analytics.event_participation_rate) }}%</strong>
+                        </div>
+                        <div class="progress" style="height: 5px;">
+                            <div class="progress-bar bg-success" style="width: {{ analytics.event_participation_rate }}%"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Donation Conversion Rate</span>
+                            <strong>{{ "%.1f"|format(analytics.donation_conversion_rate) }}%</strong>
+                        </div>
+                        <div class="progress" style="height: 5px;">
+                            <div class="progress-bar bg-warning" style="width: {{ analytics.donation_conversion_rate }}%"></div>
+                        </div>
+                    </div>
+                    <div class="mb-0">
+                        <div class="d-flex justify-content-between">
+                            <span>Volunteer Retention Rate</span>
+                            <strong>{{ "%.1f"|format(analytics.volunteer_retention_rate) }}%</strong>
+                        </div>
+                        <div class="progress" style="height: 5px;">
+                            <div class="progress-bar bg-info" style="width: {{ analytics.volunteer_retention_rate }}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Tables -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-fire"></i> Most Active NGOs
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>NGO Name</th>
+                                    <th>Events</th>
+                                    <th>Volunteers</th>
+                                    <th>Rating</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ngo in analytics.top_ngos %}
+                                <tr>
+                                    <td>{{ ngo.name }}</td>
+                                    <td>{{ ngo.event_count }}</td>
+                                    <td>{{ ngo.volunteer_count }}</td>
+                                    <td>
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-star"></i> {{ "%.1f"|format(ngo.avg_rating) }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-clock"></i> Recent Activity
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Activity</th>
+                                    <th>User</th>
+                                    <th>Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for activity in analytics.recent_activities %}
+                                <tr>
+                                    <td>
+                                        <i class="fas fa-{{ activity.icon }}"></i>
+                                        {{ activity.description }}
+                                    </td>
+                                    <td>{{ activity.user_name }}</td>
+                                    <td>
+                                        <small>{{ activity.timestamp.strftime('%Y-%m-%d %H:%M') }}</small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// User Registration Chart
+const registrationCtx = document.getElementById('userRegistrationChart').getContext('2d');
+const registrationChart = new Chart(registrationCtx, {
+    type: 'line',
+    data: {
+        labels: {{ analytics.registration_labels|tojson }},
+        datasets: [{
+            label: 'New Users',
+            data: {{ analytics.registration_data|tojson }},
+            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            tension: 0.1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+
+// User Roles Chart
+const rolesCtx = document.getElementById('userRolesChart').getContext('2d');
+const rolesChart = new Chart(rolesCtx, {
+    type: 'doughnut',
+    data: {
+        labels: {{ analytics.role_labels|tojson }},
+        datasets: [{
+            data: {{ analytics.role_data|tojson }},
+            backgroundColor: [
+                'rgba(255, 99, 132, 0.8)',
+                'rgba(54, 162, 235, 0.8)',
+                'rgba(255, 205, 86, 0.8)',
+                'rgba(75, 192, 192, 0.8)'
+            ],
+            borderColor: [
+                'rgb(255, 99, 132)',
+                'rgb(54, 162, 235)',
+                'rgb(255, 205, 86)',
+                'rgb(75, 192, 192)'
+            ],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+// Activity Chart
+const activityCtx = document.getElementById('activityChart').getContext('2d');
+const activityChart = new Chart(activityCtx, {
+    type: 'bar',
+    data: {
+        labels: {{ analytics.activity_labels|tojson }},
+        datasets: [{
+            label: 'Logins',
+            data: {{ analytics.login_activity|tojson }},
+            backgroundColor: 'rgba(54, 162, 235, 0.8)',
+            borderColor: 'rgb(54, 162, 235)',
+            borderWidth: 1
+        }, {
+            label: 'Events Created',
+            data: {{ analytics.event_activity|tojson }},
+            backgroundColor: 'rgba(255, 99, 132, 0.8)',
+            borderColor: 'rgb(255, 99, 132)',
+            borderWidth: 1
+        }, {
+            label: 'Donations',
+            data: {{ analytics.donation_activity|tojson }},
+            backgroundColor: 'rgba(255, 205, 86, 0.8)',
+            borderColor: 'rgb(255, 205, 86)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'top'
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

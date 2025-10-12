@@ -1,0 +1,539 @@
+{% extends "admin_base.html" %}
+
+{% block page_title %}Admin Profile - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-user"></i> Admin Profile</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Profile</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Profile Information -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Profile Information</h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        {% if admin.avatar %}
+                        <img src="{{ admin.avatar }}" alt="{{ admin.name }}" class="rounded-circle" width="100" height="100">
+                        {% else %}
+                        <div class="avatar-placeholder rounded-circle d-inline-flex align-items-center justify-content-center" 
+                             style="width: 100px; height: 100px; background-color: #e3f2fd; color: #1976d2; font-size: 2rem;">
+                            {{ admin.name[0] }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <h5 class="mb-1">{{ admin.name }}</h5>
+                    <p class="text-muted mb-3">{{ admin.email }}</p>
+                    <div class="mb-3">
+                        <span class="badge bg-primary">{{ admin.role }}</span>
+                        {% if admin.is_super_admin %}
+                        <span class="badge bg-danger">Super Admin</span>
+                        {% endif %}
+                    </div>
+                    <div class="text-start">
+                        <p class="mb-2"><strong>Username:</strong> {{ admin.username }}</p>
+                        <p class="mb-2"><strong>Phone:</strong> {{ admin.phone or 'N/A' }}</p>
+                        <p class="mb-2"><strong>Status:</strong> 
+                            <span class="badge bg-{{ 'success' if admin.is_active else 'secondary' }}">
+                                {{ 'Active' if admin.is_active else 'Inactive' }}
+                            </span>
+                        </p>
+                        <p class="mb-0"><strong>Last Login:</strong> {{ admin.last_login.strftime('%Y-%m-%d %H:%M') if admin.last_login else 'Never' }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Account Statistics -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Account Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Login Count:</span>
+                        <strong>{{ admin.login_count }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Account Created:</span>
+                        <strong>{{ admin.created_at.strftime('%Y-%m-%d') }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Password Last Changed:</span>
+                        <strong>{{ admin.password_changed_at.strftime('%Y-%m-%d') if admin.password_changed_at else 'N/A' }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Two-Factor Auth:</span>
+                        <strong>
+                            <span class="badge bg-{{ 'success' if admin.two_factor_enabled else 'secondary' }}">
+                                {{ 'Enabled' if admin.two_factor_enabled else 'Disabled' }}
+                            </span>
+                        </strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Settings -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs" id="profileTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic" 
+                                    type="button" role="tab">Basic Information</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#security" 
+                                    type="button" role="tab">Security</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="preferences-tab" data-bs-toggle="tab" data-bs-target="#preferences" 
+                                    type="button" role="tab">Preferences</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="activity-tab" data-bs-toggle="tab" data-bs-target="#activity" 
+                                    type="button" role="tab">Activity Log</button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    <div class="tab-content" id="profileTabContent">
+                        <!-- Basic Information Tab -->
+                        <div class="tab-pane fade show active" id="basic" role="tabpanel">
+                            <form id="basicInfoForm">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="name" class="form-label">Full Name</label>
+                                        <input type="text" class="form-control" id="name" name="name" 
+                                               value="{{ admin.name }}" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="username" class="form-label">Username</label>
+                                        <input type="text" class="form-control" id="username" name="username" 
+                                               value="{{ admin.username }}" required>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="email" class="form-label">Email Address</label>
+                                        <input type="email" class="form-control" id="email" name="email" 
+                                               value="{{ admin.email }}" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="phone" class="form-label">Phone Number</label>
+                                        <input type="tel" class="form-control" id="phone" name="phone" 
+                                               value="{{ admin.phone or '' }}">
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="bio" class="form-label">Bio</label>
+                                    <textarea class="form-control" id="bio" name="bio" rows="3">{{ admin.bio or '' }}</textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="avatar" class="form-label">Profile Picture</label>
+                                    <input type="file" class="form-control" id="avatar" name="avatar" accept="image/*">
+                                    {% if admin.avatar %}
+                                    <div class="mt-2">
+                                        <small class="text-muted">Current avatar:</small>
+                                        <img src="{{ admin.avatar }}" alt="Current avatar" class="rounded" width="50">
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Save Changes
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Security Tab -->
+                        <div class="tab-pane fade" id="security" role="tabpanel">
+                            <h6 class="mb-3">Change Password</h6>
+                            <form id="changePasswordForm">
+                                <div class="mb-3">
+                                    <label for="currentPassword" class="form-label">Current Password</label>
+                                    <input type="password" class="form-control" id="currentPassword" required>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="newPassword" class="form-label">New Password</label>
+                                        <input type="password" class="form-control" id="newPassword" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="confirmPassword" class="form-label">Confirm New Password</label>
+                                        <input type="password" class="form-control" id="confirmPassword" required>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-key"></i> Change Password
+                                </button>
+                            </form>
+
+                            <hr class="my-4">
+
+                            <h6 class="mb-3">Two-Factor Authentication</h6>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <p class="mb-0">Two-Factor Authentication</p>
+                                    <small class="text-muted">Add an extra layer of security to your account</small>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="twoFactorSwitch" 
+                                           {% if admin.two_factor_enabled %}checked{% endif %}>
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <h6 class="mb-3">Security Settings</h6>
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="loginNotifications" 
+                                           {% if admin.login_notifications %}checked{% endif %}>
+                                    <label class="form-check-label" for="loginNotifications">
+                                        Email notifications for new logins
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="sessionAlerts" 
+                                           {% if admin.session_alerts %}checked{% endif %}>
+                                    <label class="form-check-label" for="sessionAlerts">
+                                        Alert me about suspicious session activity
+                                    </label>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary" onclick="saveSecuritySettings()">
+                                <i class="fas fa-shield-alt"></i> Save Security Settings
+                            </button>
+                        </div>
+
+                        <!-- Preferences Tab -->
+                        <div class="tab-pane fade" id="preferences" role="tabpanel">
+                            <form id="preferencesForm">
+                                <div class="mb-3">
+                                    <label for="language" class="form-label">Language</label>
+                                    <select class="form-select" id="language" name="language">
+                                        <option value="en" {% if admin.language == 'en' %}selected{% endif %}>English</option>
+                                        <option value="es" {% if admin.language == 'es' %}selected{% endif %}>Spanish</option>
+                                        <option value="fr" {% if admin.language == 'fr' %}selected{% endif %}>French</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="timezone" class="form-label">Timezone</label>
+                                    <select class="form-select" id="timezone" name="timezone">
+                                        <option value="UTC" {% if admin.timezone == 'UTC' %}selected{% endif %}>UTC</option>
+                                        <option value="America/New_York" {% if admin.timezone == 'America/New_York' %}selected{% endif %}>Eastern Time</option>
+                                        <option value="America/Chicago" {% if admin.timezone == 'America/Chicago' %}selected{% endif %}>Central Time</option>
+                                        <option value="America/Denver" {% if admin.timezone == 'America/Denver' %}selected{% endif %}>Mountain Time</option>
+                                        <option value="America/Los_Angeles" {% if admin.timezone == 'America/Los_Angeles' %}selected{% endif %}>Pacific Time</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="dateFormat" class="form-label">Date Format</label>
+                                    <select class="form-select" id="dateFormat" name="date_format">
+                                        <option value="MM/DD/YYYY" {% if admin.date_format == 'MM/DD/YYYY' %}selected{% endif %}>MM/DD/YYYY</option>
+                                        <option value="DD/MM/YYYY" {% if admin.date_format == 'DD/MM/YYYY' %}selected{% endif %}>DD/MM/YYYY</option>
+                                        <option value="YYYY-MM-DD" {% if admin.date_format == 'YYYY-MM-DD' %}selected{% endif %}>YYYY-MM-DD</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="emailNotifications" 
+                                               name="email_notifications" {% if admin.email_notifications %}checked{% endif %}>
+                                        <label class="form-check-label" for="emailNotifications">
+                                            Email notifications for system updates
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="dashboardWidgets" 
+                                               name="dashboard_widgets" {% if admin.dashboard_widgets %}checked{% endif %}>
+                                        <label class="form-check-label" for="dashboardWidgets">
+                                            Show dashboard widgets
+                                        </label>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Save Preferences
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- Activity Log Tab -->
+                        <div class="tab-pane fade" id="activity" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="mb-0">Recent Activity</h6>
+                                <button type="button" class="btn btn-outline-danger btn-sm" onclick="clearActivityLog()">
+                                    <i class="fas fa-trash"></i> Clear Log
+                                </button>
+                            </div>
+                            <div class="activity-timeline">
+                                {% for activity in recent_activity %}
+                                <div class="activity-item mb-3 pb-3 border-bottom">
+                                    <div class="d-flex">
+                                        <div class="activity-icon me-3">
+                                            <i class="fas fa-{{ activity.icon }} text-{{ activity.color }}"></i>
+                                        </div>
+                                        <div class="activity-content flex-grow-1">
+                                            <p class="mb-1">{{ activity.description }}</p>
+                                            <small class="text-muted">
+                                                <i class="fas fa-clock"></i> {{ activity.timestamp.strftime('%Y-%m-%d %H:%M') }}
+                                                {% if activity.ip_address %}
+                                                <i class="fas fa-map-marker-alt ms-2"></i> {{ activity.ip_address }}
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <div class="text-center text-muted py-4">
+                                    <i class="fas fa-history fa-2x mb-3"></i>
+                                    <p>No recent activity found.</p>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% if recent_activity %}
+                            <div class="text-center mt-3">
+                                <a href="{{ url_for('admin_audit_logs') }}" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-list"></i> View All Activity
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Basic Information Form
+document.getElementById('basicInfoForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('/admin/profile/update-basic', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Profile updated successfully', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            alert('Error updating profile: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error updating profile: ' + error.message);
+    });
+});
+
+// Change Password Form
+document.getElementById('changePasswordForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    if (newPassword !== confirmPassword) {
+        alert('New passwords do not match');
+        return;
+    }
+    
+    if (newPassword.length < 8) {
+        alert('New password must be at least 8 characters long');
+        return;
+    }
+    
+    fetch('/admin/profile/change-password', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({
+            current_password: currentPassword,
+            new_password: newPassword
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Password changed successfully', 'success');
+            document.getElementById('changePasswordForm').reset();
+        } else {
+            alert('Error changing password: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error changing password: ' + error.message);
+    });
+});
+
+// Two-Factor Authentication Toggle
+document.getElementById('twoFactorSwitch').addEventListener('change', function() {
+    const enabled = this.checked;
+    
+    if (enabled) {
+        if (confirm('Are you sure you want to enable two-factor authentication?')) {
+            // Show QR code setup modal or redirect to setup page
+            window.location.href = '/admin/profile/setup-2fa';
+        } else {
+            this.checked = false;
+        }
+    } else {
+        if (confirm('Are you sure you want to disable two-factor authentication?')) {
+            fetch('/admin/profile/disable-2fa', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Two-factor authentication disabled', 'success');
+                } else {
+                    alert('Error disabling 2FA: ' + data.message);
+                    this.checked = true;
+                }
+            })
+            .catch(error => {
+                alert('Error disabling 2FA: ' + error.message);
+                this.checked = true;
+            });
+        } else {
+            this.checked = true;
+        }
+    }
+});
+
+// Preferences Form
+document.getElementById('preferencesForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = {};
+    formData.forEach((value, key) => {
+        data[key] = value;
+    });
+    
+    // Handle checkboxes
+    data.email_notifications = document.getElementById('emailNotifications').checked;
+    data.dashboard_widgets = document.getElementById('dashboardWidgets').checked;
+    
+    fetch('/admin/profile/update-preferences', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Preferences updated successfully', 'success');
+        } else {
+            alert('Error updating preferences: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error updating preferences: ' + error.message);
+    });
+});
+
+// Save Security Settings
+function saveSecuritySettings() {
+    const loginNotifications = document.getElementById('loginNotifications').checked;
+    const sessionAlerts = document.getElementById('sessionAlerts').checked;
+    
+    fetch('/admin/profile/update-security-settings', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({
+            login_notifications: loginNotifications,
+            session_alerts: sessionAlerts
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Security settings updated', 'success');
+        } else {
+            alert('Error updating security settings: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error updating security settings: ' + error.message);
+    });
+}
+
+// Clear Activity Log
+function clearActivityLog() {
+    if (confirm('Are you sure you want to clear your activity log? This action cannot be undone.')) {
+        fetch('/admin/profile/clear-activity-log', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Activity log cleared', 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                alert('Error clearing activity log: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error clearing activity log: ' + error.message);
+        });
+    }
+}
+
+// Toast Notification
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'} alert-dismissible fade show position-fixed`;
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 3000);
+}
+</script>
+{% endblock %}

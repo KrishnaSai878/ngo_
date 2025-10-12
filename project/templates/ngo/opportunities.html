@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}{{ ngo.organization_name }} - Opportunities{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="dashboard-header">
+        <h1><i class="fas fa-building"></i> {{ ngo.organization_name }}</h1>
+        <p>Active opportunities you can explore and join</p>
+    </div>
+
+    {% if ngo.description %}
+    <div class="card" style="margin-bottom: 1.5rem;">
+        <h3>About this NGO</h3>
+        <p style="color:#555;">{{ ngo.description }}</p>
+    </div>
+    {% endif %}
+
+    {% if events %}
+    <div class="grid grid-3">
+        {% for event in events %}
+        <div class="card">
+            <h3 style="margin-bottom: .25rem;">{{ event.title }}</h3>
+            <p style="margin: 0.25rem 0; color: #666;">
+                <i class="fas fa-map-marker-alt"></i> {{ event.location }}
+            </p>
+            <p style="margin: 0.25rem 0; color: #666;">
+                <i class="fas fa-calendar"></i>
+                {{ event.start_date.strftime('%b %d, %Y') }} - {{ event.end_date.strftime('%b %d, %Y') }}
+            </p>
+            <p style="margin-top: .5rem;">{{ event.description[:140] }}{% if event.description|length > 140 %}...{% endif %}</p>
+            <div style="margin-top: .75rem;">
+                <a href="{{ url_for('volunteer_event_detail', event_id=event.id) }}" class="btn btn-primary">Explore</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card" style="text-align:center; color:#666;">
+        No active opportunities at the moment. Please check back later.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+
+

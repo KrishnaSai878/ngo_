@@ -1,0 +1,280 @@
+{% extends "admin_base.html" %}
+
+{% block page_title %}Audit Logs - Admin{% endblock %}
+
+{% block admin_content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-history"></i> Audit Logs</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Audit Logs</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="admin" class="form-label">Admin User</label>
+                            <select class="form-select" id="admin" name="admin">
+                                <option value="">All Admins</option>
+                                {% for admin in admin_users %}
+                                <option value="{{ admin.id }}" {% if admin_filter == admin.id|string %}selected{% endif %}>
+                                    {{ admin.first_name }} {{ admin.last_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="action" class="form-label">Action</label>
+                            <select class="form-select" id="action" name="action">
+                                <option value="">All Actions</option>
+                                <option value="login" {% if action_filter == 'login' %}selected{% endif %}>Login</option>
+                                <option value="logout" {% if action_filter == 'logout' %}selected{% endif %}>Logout</option>
+                                <option value="create_user" {% if action_filter == 'create_user' %}selected{% endif %}>Create User</option>
+                                <option value="update_user" {% if action_filter == 'update_user' %}selected{% endif %}>Update User</option>
+                                <option value="delete_user" {% if action_filter == 'delete_user' %}selected{% endif %}>Delete User</option>
+                                <option value="verify_user" {% if action_filter == 'verify_user' %}selected{% endif %}>Verify User</option>
+                                <option value="toggle_user_status" {% if action_filter == 'toggle_user_status' %}selected{% endif %}>Toggle User Status</option>
+                                <option value="export_data" {% if action_filter == 'export_data' %}selected{% endif %}>Export Data</option>
+                                <option value="update_settings" {% if action_filter == 'update_settings' %}selected{% endif %}>Update Settings</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="date_from" class="form-label">Date From</label>
+                            <input type="date" class="form-control" id="date_from" name="date_from" value="{{ date_from }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="date_to" class="form-label">Date To</label>
+                            <input type="date" class="form-control" id="date_to" name="date_to" value="{{ date_to }}">
+                        </div>
+                        <div class="col-md-12 d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="fas fa-search"></i> Filter
+                            </button>
+                            <a href="{{ url_for('admin_audit_logs') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> Clear
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audit Logs Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Audit Logs ({{ logs.total }})</h5>
+                    <div>
+                        <button class="btn btn-outline-primary btn-sm" onclick="exportLogs()">
+                            <i class="fas fa-download"></i> Export Logs
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="clearOldLogs()">
+                            <i class="fas fa-trash"></i> Clear Old Logs
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Admin</th>
+                                    <th>Action</th>
+                                    <th>Details</th>
+                                    <th>IP Address</th>
+                                    <th>User Agent</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in logs.items %}
+                                <tr>
+                                    <td>
+                                        <small>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="user-avatar me-2">
+                                                <div class="avatar-placeholder rounded-circle d-flex align-items-center justify-content-center" 
+                                                     style="width: 30px; height: 30px; background-color: #e3f2fd; color: #1976d2; font-size: 12px;">
+                                                    {{ log.admin.first_name[0] if log.admin.first_name else 'A' }}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold">{{ log.admin.first_name }} {{ log.admin.last_name }}</div>
+                                                <small class="text-muted">{{ log.admin.email }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ 'success' if 'login' in log.action else 'warning' if 'logout' in log.action else 'danger' if 'delete' in log.action else 'primary' }}">
+                                            {{ log.action.replace('_', ' ').title() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div style="max-width: 300px;">
+                                            {% if log.details %}
+                                                <small class="text-muted">{{ log.details[:100] }}{% if log.details|length > 100 %}...{% endif %}</small>
+                                            {% else %}
+                                                <small class="text-muted">No additional details</small>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <small class="font-monospace">{{ log.ip_address }}</small>
+                                    </td>
+                                    <td>
+                                        <div style="max-width: 200px;">
+                                            <small class="text-muted" title="{{ log.user_agent }}">
+                                                {{ log.user_agent[:50] }}{% if log.user_agent|length > 50 %}...{% endif %}
+                                            </small>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">
+                                        <i class="fas fa-history fa-2x mb-3"></i>
+                                        <p>No audit logs found matching your criteria.</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% if logs.pages > 1 %}
+                <div class="card-footer">
+                    <nav aria-label="Audit log pagination">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if logs.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin_audit_logs', page=logs.prev_num, admin=admin_filter, action=action_filter, date_from=date_from, date_to=date_to) }}">Previous</a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for page_num in logs.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                                {% if page_num %}
+                                    {% if page_num != logs.page %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin_audit_logs', page=page_num, admin=admin_filter, action=action_filter, date_from=date_from, date_to=date_to) }}">{{ page_num }}</a>
+                                    </li>
+                                    {% else %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                    {% endif %}
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if logs.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin_audit_logs', page=logs.next_num, admin=admin_filter, action=action_filter, date_from=date_from, date_to=date_to) }}">Next</a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-primary">
+                        <i class="fas fa-user-shield fa-2x mb-2"></i>
+                        <div class="display-4">{{ stats.total_admin_actions }}</div>
+                        <p class="text-muted mb-0">Total Admin Actions</p>
+                    </h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-success">
+                        <i class="fas fa-user-check fa-2x mb-2"></i>
+                        <div class="display-4">{{ stats.user_verifications }}</div>
+                        <p class="text-muted mb-0">User Verifications</p>
+                    </h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-warning">
+                        <i class="fas fa-user-times fa-2x mb-2"></i>
+                        <div class="display-4">{{ stats.user_deletions }}</div>
+                        <p class="text-muted mb-0">User Deletions</p>
+                    </h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-info">
+                        <i class="fas fa-download fa-2x mb-2"></i>
+                        <div class="display-4">{{ stats.data_exports }}</div>
+                        <p class="text-muted mb-0">Data Exports</p>
+                    </h5>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function exportLogs() {
+    const searchParams = new URLSearchParams(window.location.search);
+    window.location.href = `/admin/audit-logs/export?${searchParams.toString()}`;
+}
+
+function clearOldLogs() {
+    if (confirm('Are you sure you want to clear audit logs older than 90 days? This action cannot be undone.')) {
+        fetch('/admin/audit-logs/clear-old', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('An error occurred. Please try again.');
+        });
+    }
+}
+</script>
+{% endblock %}

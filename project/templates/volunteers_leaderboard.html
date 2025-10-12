@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Leaderboard - NGO Connect{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="dashboard-header">
+        <h1><i class="fas fa-trophy"></i> Leaderboard</h1>
+        <p>Top volunteers by points and hours</p>
+    </div>
+
+    <div class="grid grid-2">
+        <div class="card">
+            <h3><i class="fas fa-star"></i> Top by Points</h3>
+            <div class="table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Volunteer</th>
+                            <th>Points</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in points_leaders %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ v.user.first_name }} {{ v.user.last_name }}</td>
+                            <td>{{ v.total_points }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" style="text-align:center; color:#666;">No data yet</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3><i class="fas fa-clock"></i> Top by Hours</h3>
+            <div class="table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Volunteer</th>
+                            <th>Hours</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in hours_leaders %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ v.user.first_name }} {{ v.user.last_name }}</td>
+                            <td>{{ v.total_hours }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" style="text-align:center; color:#666;">No data yet</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
