@@ -1,16 +1,14 @@
 {% extends "base.html" %}
 
+{% block navbar %}{% endblock %}
+
 {% block title %}Admin Dashboard - NGO Connect{% endblock %}
 
-{% block head %}
+{% block extra_css %}
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block page_title %}Admin Dashboard{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/admin.css') }}" rel="stylesheet">
-    
-    <!-- CSRF Token for AJAX requests -->
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link href="{{ url_for('static', filename='css/admin.css') }}?v={{ current_year }}" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
@@ -132,7 +130,7 @@
                     </button>
                     
                     <div class="navbar-title">
-                        <h1 class="h4 mb-0">{% block page_title %}Dashboard{% endblock %}</h1>
+                        <h1 class="h4 mb-0">{{ self.page_title() }}</h1>
                     </div>
                     
                     <div class="navbar-actions">
@@ -180,7 +178,7 @@
             <div class="container-fluid">
                 <div class="row">
                     <div class="col-md-6">
-                        <small>&copy; {% now 'local', '%Y' %} NGO Connect. All rights reserved.</small>
+                        <small>&copy; {{ current_year }} NGO Connect. All rights reserved.</small>
                     </div>
                     <div class="col-md-6 text-end">
                         <small>Last login: {{ current_user.last_login.strftime('%Y-%m-%d %H:%M') if current_user.last_login else 'Never' }}</small>
@@ -191,9 +189,10 @@
     </div>
 </div>
 
-<!-- Bootstrap JS -->
+{% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+<script src="{{ url_for('static', filename='js/admin.js') }}?v={{ current_year }}"></script>
+{% endblock %}
 
 <script>
 // Sidebar toggle functionality

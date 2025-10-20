@@ -1,4 +1,4 @@
-{% extends "admin_base.html" %}
+{% extends "admin/base.html" %}
 
 {% block page_title %}NGO Management - Admin{% endblock %}
 
@@ -121,16 +121,16 @@
                                             </a>
                                             {% if ngo.status == 'pending' %}
                                             <button type="button" class="btn btn-outline-success" title="Approve NGO" 
-                                                    onclick="approveNGO({{ ngo.id }}, '{{ ngo.name }}')">
+                                                    onclick='approveNGO({{ ngo.id }}, {{ ngo.name|tojson }})'>
                                                 <i class="fas fa-check"></i>
                                             </button>
                                             {% endif %}
                                             <button type="button" class="btn btn-outline-{{ 'danger' if ngo.status == 'active' else 'success' }}" title="{{ 'Suspend' if ngo.status == 'active' else 'Activate' }}"
-                                                    onclick="toggleNGOStatus({{ ngo.id }}, '{{ ngo.status }}', '{{ ngo.name }}')">
+                                                    onclick='toggleNGOStatus({{ ngo.id }}, {{ ngo.status|tojson }}, {{ ngo.name|tojson }})'>
                                                 <i class="fas fa-{{ 'ban' if ngo.status == 'active' else 'check' }}"></i>
                                             </button>
                                             <button type="button" class="btn btn-outline-danger" title="Delete NGO"
-                                                    onclick="deleteNGO({{ ngo.id }}, '{{ ngo.name }}')">
+                                                    onclick='deleteNGO({{ ngo.id }}, {{ ngo.name|tojson }})'>
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </div>

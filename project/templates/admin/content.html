@@ -1,4 +1,4 @@
-{% extends "admin_base.html" %}
+{% extends "admin/base.html" %}
 
 {% block page_title %}Content Management - Admin{% endblock %}
 
@@ -93,17 +93,17 @@
                                                     </a>
                                                     {% if page.status == 'published' %}
                                                     <button type="button" class="btn btn-outline-warning" title="Unpublish"
-                                                            onclick="togglePageStatus({{ page.id }}, 'draft', '{{ page.title }}')">
+                                                            onclick='togglePageStatus({{ page.id }}, {{ "draft"|tojson }}, {{ page.title|tojson }})'>
                                                         <i class="fas fa-times"></i>
                                                     </button>
                                                     {% else %}
                                                     <button type="button" class="btn btn-outline-success" title="Publish"
-                                                            onclick="togglePageStatus({{ page.id }}, 'published', '{{ page.title }}')">
+                                                            onclick='togglePageStatus({{ page.id }}, {{ "published"|tojson }}, {{ page.title|tojson }})'>
                                                         <i class="fas fa-check"></i>
                                                     </button>
                                                     {% endif %}
                                                     <button type="button" class="btn btn-outline-danger" title="Delete"
-                                                            onclick="deletePage({{ page.id }}, '{{ page.title }}')">
+                                                            onclick='deletePage({{ page.id }}, {{ page.title|tojson }})'>
                                                         <i class="fas fa-trash"></i>
                                                     </button>
                                                 </div>
@@ -195,17 +195,17 @@
                                                     </a>
                                                     {% if post.status == 'published' %}
                                                     <button type="button" class="btn btn-outline-warning" title="Unpublish"
-                                                            onclick="toggleBlogStatus({{ post.id }}, 'draft', '{{ post.title }}')">
+                                                            onclick='toggleBlogStatus({{ post.id }}, {{ "draft"|tojson }}, {{ post.title|tojson }})'>
                                                         <i class="fas fa-times"></i>
                                                     </button>
                                                     {% else %}
                                                     <button type="button" class="btn btn-outline-success" title="Publish"
-                                                            onclick="toggleBlogStatus({{ post.id }}, 'published', '{{ post.title }}')">
+                                                            onclick='toggleBlogStatus({{ post.id }}, {{ "published"|tojson }}, {{ post.title|tojson }})'>
                                                         <i class="fas fa-check"></i>
                                                     </button>
                                                     {% endif %}
                                                     <button type="button" class="btn btn-outline-danger" title="Delete"
-                                                            onclick="deleteBlogPost({{ post.id }}, '{{ post.title }}')">
+                                                            onclick='deleteBlogPost({{ post.id }}, {{ post.title|tojson }})'>
                                                         <i class="fas fa-trash"></i>
                                                     </button>
                                                 </div>
@@ -272,22 +272,22 @@
                                             <td>
                                                 <div class="btn-group btn-group-sm" role="group">
                                                     <button type="button" class="btn btn-outline-primary" title="Edit"
-                                                            onclick="editFAQ({{ faq.id }}, '{{ faq.question }}')">
+                                                            onclick='editFAQ({{ faq.id }}, {{ faq.question|tojson }})'>
                                                         <i class="fas fa-edit"></i>
                                                     </button>
                                                     {% if faq.is_active %}
                                                     <button type="button" class="btn btn-outline-warning" title="Deactivate"
-                                                            onclick="toggleFAQStatus({{ faq.id }}, false, '{{ faq.question }}')">
+                                                            onclick='toggleFAQStatus({{ faq.id }}, {{ false|tojson }}, {{ faq.question|tojson }})'>
                                                         <i class="fas fa-times"></i>
                                                     </button>
                                                     {% else %}
                                                     <button type="button" class="btn btn-outline-success" title="Activate"
-                                                            onclick="toggleFAQStatus({{ faq.id }}, true, '{{ faq.question }}')">
+                                                            onclick='toggleFAQStatus({{ faq.id }}, {{ true|tojson }}, {{ faq.question|tojson }})'>
                                                         <i class="fas fa-check"></i>
                                                     </button>
                                                     {% endif %}
                                                     <button type="button" class="btn btn-outline-danger" title="Delete"
-                                                            onclick="deleteFAQ({{ faq.id }}, '{{ faq.question }}')">
+                                                            onclick='deleteFAQ({{ faq.id }}, {{ faq.question|tojson }})'>
                                                         <i class="fas fa-trash"></i>
                                                     </button>
                                                 </div>
@@ -346,7 +346,7 @@
                                             <td>
                                                 <div class="btn-group btn-group-sm" role="group">
                                                     <button type="button" class="btn btn-outline-danger" title="Unsubscribe"
-                                                            onclick="unsubscribeNewsletter({{ subscriber.id }}, '{{ subscriber.email }}')">
+                                                            onclick='unsubscribeNewsletter({{ subscriber.id }}, {{ subscriber.email|tojson }})'>
                                                         <i class="fas fa-times"></i>
                                                     </button>
                                                 </div>
@@ -419,7 +419,9 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
 function togglePageStatus(pageId, newStatus, pageTitle) {
     const action = newStatus === 'published' ? 'publish' : 'unpublish';
@@ -565,36 +567,11 @@ function deleteFAQ(faqId, question) {
     }
 }
 
-function unsubscribeNewsletter(subscriberId, email) {
-    if (confirm(`Are you sure you want to unsubscribe: ${email}?`)) {
-        fetch(`/admin/content/newsletter/${subscriberId}/unsubscribe`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('Error unsubscribing: ' + data.message);
-            }
-        })
-        .catch(error => {
-            alert('Error unsubscribing: ' + error.message);
-        });
-    }
-}
-
-document.getElementById('newsletterForm').addEventListener('submit', function(e) {
+document.getElementById('newsletterForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
-    
     const subject = document.getElementById('newsletterSubject').value;
     const content = document.getElementById('newsletterContent').value;
     const sendTest = document.getElementById('sendTestEmail').checked;
-    
     if (confirm('Are you sure you want to send this newsletter to all subscribers?')) {
         fetch('/admin/content/newsletter/send', {
             method: 'POST',
@@ -602,13 +579,9 @@ document.getElementById('newsletterForm').addEventListener('submit', function(e)
                 'Content-Type': 'application/json',
                 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
             },
-            body: JSON.stringify({
-                subject: subject,
-                content: content,
-                send_test: sendTest
-            })
+            body: JSON.stringify({ subject, content, send_test: sendTest })
         })
-        .then(response => response.json())
+        .then(r => r.json())
         .then(data => {
             if (data.success) {
                 alert('Newsletter sent successfully!');
@@ -617,9 +590,7 @@ document.getElementById('newsletterForm').addEventListener('submit', function(e)
                 alert('Error sending newsletter: ' + data.message);
             }
         })
-        .catch(error => {
-            alert('Error sending newsletter: ' + error.message);
-        });
+        .catch(error => alert('Error sending newsletter: ' + error.message));
     }
 });
 </script>

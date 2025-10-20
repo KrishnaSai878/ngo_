@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.so
+
+# Environments
+.venv/
+venv/
+.env
+.env.*
+.envrc
+.env.local
+.env.development
+.env.production
+
+# Packaging / build
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Databases / app data
+instance/
+*.db
+*.sqlite3
+*.log
+
+# Others
+coverage/
+.coverage

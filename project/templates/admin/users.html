@@ -1,4 +1,4 @@
-{% extends "admin_base.html" %}
+{% extends "admin/base.html" %}
 
 {% block page_title %}User Management - Admin{% endblock %}
 
@@ -247,7 +247,8 @@
             </form>
         </div>
     </div>
-</div>
+    </div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -323,7 +324,6 @@ function deleteUser(userId, email) {
 }
 
 function exportUsers() {
-    // Implement CSV export functionality
     const searchParams = new URLSearchParams(window.location.search);
     window.location.href = `/admin/users/export?${searchParams.toString()}`;
 }

@@ -1,4 +1,4 @@
-{% extends "admin_base.html" %}
+{% extends "admin/base.html" %}
 
 {% block page_title %}Admin Profile - Admin{% endblock %}
 
@@ -325,9 +325,7 @@
 // Basic Information Form
 document.getElementById('basicInfoForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    
     const formData = new FormData(this);
-    
     fetch('/admin/profile/update-basic', {
         method: 'POST',
         body: formData
@@ -349,31 +347,24 @@ document.getElementById('basicInfoForm').addEventListener('submit', function(e) 
 // Change Password Form
 document.getElementById('changePasswordForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    
     const currentPassword = document.getElementById('currentPassword').value;
     const newPassword = document.getElementById('newPassword').value;
     const confirmPassword = document.getElementById('confirmPassword').value;
-    
     if (newPassword !== confirmPassword) {
         alert('New passwords do not match');
         return;
     }
-    
     if (newPassword.length < 8) {
         alert('New password must be at least 8 characters long');
         return;
     }
-    
     fetch('/admin/profile/change-password', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
         },
-        body: JSON.stringify({
-            current_password: currentPassword,
-            new_password: newPassword
-        })
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
     })
     .then(response => response.json())
     .then(data => {
@@ -392,10 +383,8 @@ document.getElementById('changePasswordForm').addEventListener('submit', functio
 // Two-Factor Authentication Toggle
 document.getElementById('twoFactorSwitch').addEventListener('change', function() {
     const enabled = this.checked;
-    
     if (enabled) {
         if (confirm('Are you sure you want to enable two-factor authentication?')) {
-            // Show QR code setup modal or redirect to setup page
             window.location.href = '/admin/profile/setup-2fa';
         } else {
             this.checked = false;
@@ -404,10 +393,7 @@ document.getElementById('twoFactorSwitch').addEventListener('change', function()
         if (confirm('Are you sure you want to disable two-factor authentication?')) {
             fetch('/admin/profile/disable-2fa', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
-                }
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content }
             })
             .then(response => response.json())
             .then(data => {
@@ -431,23 +417,14 @@ document.getElementById('twoFactorSwitch').addEventListener('change', function()
 // Preferences Form
 document.getElementById('preferencesForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    
     const formData = new FormData(this);
     const data = {};
-    formData.forEach((value, key) => {
-        data[key] = value;
-    });
-    
-    // Handle checkboxes
+    formData.forEach((value, key) => { data[key] = value; });
     data.email_notifications = document.getElementById('emailNotifications').checked;
     data.dashboard_widgets = document.getElementById('dashboardWidgets').checked;
-    
     fetch('/admin/profile/update-preferences', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
-        },
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
         body: JSON.stringify(data)
     })
     .then(response => response.json())
@@ -458,26 +435,17 @@ document.getElementById('preferencesForm').addEventListener('submit', function(e
             alert('Error updating preferences: ' + data.message);
         }
     })
-    .catch(error => {
-        alert('Error updating preferences: ' + error.message);
-    });
+    .catch(error => { alert('Error updating preferences: ' + error.message); });
 });
 
 // Save Security Settings
 function saveSecuritySettings() {
     const loginNotifications = document.getElementById('loginNotifications').checked;
     const sessionAlerts = document.getElementById('sessionAlerts').checked;
-    
     fetch('/admin/profile/update-security-settings', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
-        },
-        body: JSON.stringify({
-            login_notifications: loginNotifications,
-            session_alerts: sessionAlerts
-        })
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
+        body: JSON.stringify({ login_notifications: loginNotifications, session_alerts: sessionAlerts })
     })
     .then(response => response.json())
     .then(data => {
@@ -487,9 +455,7 @@ function saveSecuritySettings() {
             alert('Error updating security settings: ' + data.message);
         }
     })
-    .catch(error => {
-        alert('Error updating security settings: ' + error.message);
-    });
+    .catch(error => { alert('Error updating security settings: ' + error.message); });
 }
 
 // Clear Activity Log
@@ -497,10 +463,7 @@ function clearActivityLog() {
     if (confirm('Are you sure you want to clear your activity log? This action cannot be undone.')) {
         fetch('/admin/profile/clear-activity-log', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
-            }
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content }
         })
         .then(response => response.json())
         .then(data => {
@@ -511,9 +474,7 @@ function clearActivityLog() {
                 alert('Error clearing activity log: ' + data.message);
             }
         })
-        .catch(error => {
-            alert('Error clearing activity log: ' + error.message);
-        });
+        .catch(error => { alert('Error clearing activity log: ' + error.message); });
     }
 }
 
@@ -526,14 +487,8 @@ function showToast(message, type = 'info') {
         ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
-    
     document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        if (toast.parentNode) {
-            toast.parentNode.removeChild(toast);
-        }
-    }, 3000);
+    setTimeout(() => { if (toast.parentNode) { toast.parentNode.removeChild(toast); } }, 3000);
 }
 </script>
 {% endblock %}

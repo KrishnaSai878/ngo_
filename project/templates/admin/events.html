@@ -1,4 +1,4 @@
-{% extends "admin_base.html" %}
+{% extends "admin/base.html" %}
 
 {% block page_title %}Event Management - Admin{% endblock %}
 
@@ -152,12 +152,12 @@
                                             </a>
                                             {% if event.status == 'upcoming' %}
                                             <button type="button" class="btn btn-outline-warning" title="Cancel Event" 
-                                                    onclick="cancelEvent({{ event.id }}, '{{ event.title }}')">
+                                                    onclick='cancelEvent({{ event.id }}, {{ event.title|tojson }})'>
                                                 <i class="fas fa-times"></i>
                                             </button>
                                             {% endif %}
                                             <button type="button" class="btn btn-outline-danger" title="Delete Event"
-                                                    onclick="deleteEvent({{ event.id }}, '{{ event.title }}')">
+                                                    onclick='deleteEvent({{ event.id }}, {{ event.title|tojson }})'>
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </div>

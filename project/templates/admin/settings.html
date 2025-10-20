@@ -1,4 +1,4 @@
-{% extends "admin_base.html" %}
+{% extends "admin/base.html" %}
 
 {% block page_title %}Settings - Admin{% endblock %}
 
@@ -156,7 +156,7 @@
                     <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">
                         <i class="fas fa-arrow-left"></i> Back to Dashboard
                     </a>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary" onclick="return confirmCriticalSettings()">
                         <i class="fas fa-save"></i> Save Settings
                     </button>
                 </div>

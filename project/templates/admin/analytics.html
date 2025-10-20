@@ -1,4 +1,4 @@
-{% extends "admin_base.html" %}
+{% extends "admin/base.html" %}
 
 {% block page_title %}Analytics - Admin{% endblock %}
 
@@ -253,16 +253,8 @@ const registrationChart = new Chart(registrationCtx, {
     },
     options: {
         responsive: true,
-        plugins: {
-            legend: {
-                display: false
-            }
-        },
-        scales: {
-            y: {
-                beginAtZero: true
-            }
-        }
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true } }
     }
 });
 
@@ -291,11 +283,7 @@ const rolesChart = new Chart(rolesCtx, {
     },
     options: {
         responsive: true,
-        plugins: {
-            legend: {
-                position: 'bottom'
-            }
-        }
+        plugins: { legend: { position: 'bottom' } }
     }
 });
 
@@ -327,16 +315,8 @@ const activityChart = new Chart(activityCtx, {
     },
     options: {
         responsive: true,
-        plugins: {
-            legend: {
-                position: 'top'
-            }
-        },
-        scales: {
-            y: {
-                beginAtZero: true
-            }
-        }
+        plugins: { legend: { position: 'top' } },
+        scales: { y: { beginAtZero: true } }
     }
 });
 </script>

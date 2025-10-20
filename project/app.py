@@ -4,8 +4,9 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_wtf.csrf import CSRFProtect, CSRFError, generate_csrf
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+from flask_mail import Mail, Message as MailMessage
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import json
 from dotenv import load_dotenv
 
@@ -42,6 +43,13 @@ app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') == 'production
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
+# Email settings
+app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS'] = str(os.environ.get('MAIL_USE_TLS', 'True')).lower() == 'true'
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+
 # Initialize database
 db.init_app(app)
 
@@ -51,6 +59,7 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 socketio = SocketIO(app, cors_allowed_origins="*")
 csrf = CSRFProtect(app)
+mail = Mail(app)
 
 # Initialize queries
 queries = init_queries(db, {
@@ -78,7 +87,66 @@ def add_security_headers(response):
 # Ensure csrf_token() is available in all templates
 @app.context_processor
 def inject_csrf_token():
-    return dict(csrf_token=generate_csrf)
+    return dict(csrf_token=generate_csrf, current_year=datetime.now(timezone.utc).year)
+
+# Default admin context for templates so sidebar badges/visibility work on every admin page
+@app.context_processor
+def inject_admin_defaults():
+    try:
+        # Compute light-weight stats used in admin sidebar badges
+        base_stats = {
+            'pending_users': User.query.filter_by(is_verified=False).count(),
+            'pending_ngos': NGO.query.filter_by(is_verified=False).count(),
+        }
+        # Compute admin permissions for current user if authenticated
+        perms = get_admin_permissions(current_user) if current_user.is_authenticated else []
+        return dict(stats=base_stats, admin_permissions=perms)
+    except Exception:
+        # In case DB is unavailable during error pages, return safe defaults
+        return dict(stats={'pending_users': 0, 'pending_ngos': 0}, admin_permissions=[])
+
+# Ensure the current admin has a Super Admin role with full permissions
+def ensure_super_admin(user):
+    try:
+        if not user.is_authenticated or getattr(user, 'role', None) != 'admin':
+            return
+        # Define full permissions used in the app
+        full_perms = {
+            'manage_users': True,
+            'create_users': True,
+            'delete_users': True,
+            'export_data': True,
+            'manage_ngos': True,
+            'manage_events': True,
+            'manage_content': True,
+            'view_analytics': True,
+            'view_audit_logs': True,
+            'manage_roles': True,
+            'manage_settings': True,
+        }
+        role = AdminRole.query.filter_by(name='Super Admin').first()
+        if not role:
+            role = AdminRole(name='Super Admin', description='All permissions', permissions=json.dumps(full_perms), is_active=True)
+            db.session.add(role)
+            db.session.commit()
+        else:
+            # Keep role permissions up to date
+            try:
+                current = role.get_permissions()
+            except Exception:
+                current = {}
+            if any(not current.get(k) for k in full_perms.keys()):
+                role.permissions = json.dumps(full_perms)
+                db.session.commit()
+        # Assign role to user if not already
+        assignment = AdminUserRole.query.filter_by(user_id=user.id, role_id=role.id, is_active=True).first()
+        if not assignment:
+            assignment = AdminUserRole(user_id=user.id, role_id=role.id, is_active=True)
+            db.session.add(assignment)
+            db.session.commit()
+    except Exception as _e:
+        # Do not break the request if role assignment fails
+        app.logger.error(f"Failed to ensure Super Admin role: {_e}")
 
 # Friendly CSRF error handler
 @app.errorhandler(CSRFError)
@@ -88,11 +156,15 @@ def handle_csrf_error(e):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 # Routes
 @app.route('/')
 def index():
+    # If an admin visits the root, take them to the admin dashboard
+    # Allow bypass via query when an admin page error redirected here
+    if request.args.get('no_admin_redirect') != '1' and current_user.is_authenticated and getattr(current_user, 'role', None) == 'admin':
+        return redirect(url_for('admin_dashboard'))
     return render_template('index.html')
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -180,9 +252,11 @@ def login():
             # Reset failed attempts on successful login
             session.pop('failed_login_attempts', None)
             login_user(user)
-            user.last_login = datetime.utcnow()
+            # Use timezone-aware now, then strip tzinfo to keep DB naive UTC
+            user.last_login = datetime.now(timezone.utc).replace(tzinfo=None)
             db.session.commit()
-            return redirect(url_for('dashboard'))
+            # Redirect admins straight to admin dashboard; others use role router
+            return redirect(url_for('admin_dashboard' if user.role == 'admin' else 'dashboard'))
         else:
             # Increment failed attempts
             session['failed_login_attempts'] = failed_attempts + 1
@@ -383,6 +457,27 @@ def volunteers_leaderboard():
         hours_leaders=hours_leaders
     )
 
+@app.route('/admin/test-email')
+@admin_required
+def admin_test_email():
+    try:
+        to_addr = request.args.get('to') or app.config.get('MAIL_USERNAME')
+        if not to_addr:
+            flash('MAIL_USERNAME is not configured and no ?to=email provided', 'error')
+            return redirect(url_for('admin_dashboard'))
+
+        msg = MailMessage(
+            subject='NGO Connect Test Email',
+            sender=app.config.get('MAIL_USERNAME'),
+            recipients=[to_addr],
+            body='This is a test email from NGO Connect.'
+        )
+        mail.send(msg)
+        flash(f'Test email sent to {to_addr}', 'success')
+    except Exception as e:
+        flash(f'Failed to send test email: {str(e)}', 'error')
+    return redirect(url_for('admin_dashboard'))
+
 @app.route('/about')
 def about():
     return render_template('about.html')
@@ -542,7 +637,7 @@ def ngo_edit_event(event_id):
             event.category = request.form['category']
             event.max_volunteers = int(request.form['max_volunteers'])
             event.required_skills = json.dumps(required_skills)
-            event.updated_at = datetime.utcnow()
+            event.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
             
             db.session.commit()
             flash('Event updated successfully!', 'success')
@@ -722,7 +817,7 @@ def handle_message(data):
         emit('receive_message', {
             'sender': current_user.first_name + ' ' + current_user.last_name,
             'message': data['message'],
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         }, room=room)
     except Exception as e:
         db.session.rollback()
@@ -820,6 +915,13 @@ def get_event_categories():
 def admin_dashboard():
     """Admin dashboard with overview statistics"""
     try:
+        # Ensure current admin has full permissions so all buttons work
+        ensure_super_admin(current_user)
+        # Normalize time boundaries to datetimes (naive UTC)
+        now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+        start_of_today = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+        start_of_month = now_utc.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
         # Get dashboard statistics
         stats = {
             'total_users': User.query.count(),
@@ -827,16 +929,16 @@ def admin_dashboard():
             'total_events': Event.query.count(),
             'total_donations': Donor.query.count(),
             'new_users_today': User.query.filter(
-                User.created_at >= datetime.utcnow().date()
+                User.created_at >= start_of_today
             ).count(),
             'pending_users': User.query.filter_by(is_verified=False).count(),
             'pending_ngos': NGO.query.filter_by(is_verified=False).count(),
             'events_this_week': Event.query.filter(
-                Event.start_date >= datetime.utcnow(),
-                Event.start_date <= datetime.utcnow() + timedelta(days=7)
+                Event.start_date >= now_utc,
+                Event.start_date <= now_utc + timedelta(days=7)
             ).count(),
             'donations_this_month': Donor.query.filter(
-                Donor.created_at >= datetime.utcnow().replace(day=1)
+                Donor.created_at >= start_of_month
             ).count(),
             'pending_reports': 0  # Will be implemented with reporting system
         }
@@ -867,7 +969,7 @@ def admin_dashboard():
             success=True
         )
         
-        return render_template('admin_dashboard.html', 
+        return render_template('admin/dashboard.html', 
                              stats=stats, 
                              recent_activity=activity_data,
                              admin_permissions=admin_permissions)
@@ -879,8 +981,9 @@ def admin_dashboard():
             success=False,
             error_message=str(e)
         )
-        flash('Error loading dashboard data', 'error')
-        return redirect(url_for('index'))
+        flash(f'Error loading dashboard data: {str(e)}', 'error')
+        # Add flag to avoid immediate redirect back to /admin/dashboard
+        return redirect(url_for('index', no_admin_redirect='1'))
 
 @app.route('/admin/users')
 @admin_required
@@ -927,7 +1030,7 @@ def admin_users():
             success=True
         )
         
-        return render_template('admin_users.html', users=users, 
+        return render_template('admin/users.html', users=users, 
                              search=search, role_filter=role_filter, 
                              status_filter=status_filter)
     
@@ -1062,7 +1165,7 @@ def clear_old_audit_logs():
     try:
         from datetime import datetime, timedelta
         
-        cutoff_date = datetime.utcnow() - timedelta(days=90)
+        cutoff_date = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=90)
         old_logs = AdminAuditLog.query.filter(AdminAuditLog.timestamp < cutoff_date).all()
         deleted_count = len(old_logs)
         
@@ -1102,9 +1205,9 @@ def admin_settings():
             'allowed_file_types': ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx']
         }
         
-        return render_template('admin_settings.html',
+        return render_template('admin/settings.html',
                              settings=settings,
-                             admin_permissions=get_admin_permissions())
+                             admin_permissions=get_admin_permissions(current_user))
     except Exception as e:
         app.logger.error(f"Error loading admin settings: {str(e)}")
         flash('Error loading settings', 'error')
@@ -1234,7 +1337,7 @@ def admin_audit_logs():
             success=True
         )
         
-        return render_template('admin_audit_logs.html', logs=logs, actions=actions,
+        return render_template('admin/audit_logs.html', logs=logs, actions=actions,
                              admin_users=admin_users, admin_filter=admin_filter,
                              action_filter=action_filter, date_from=date_from,
                              date_to=date_to)
@@ -1276,7 +1379,7 @@ def admin_ngos():
             success=True
         )
         
-        return render_template('admin_ngos.html', ngos=ngos, search=search, status_filter=status_filter)
+        return render_template('admin/ngos.html', ngos=ngos, search=search, status_filter=status_filter)
     
     except Exception as e:
         log_admin_action(
@@ -1315,7 +1418,7 @@ def admin_events():
             success=True
         )
         
-        return render_template('admin_events.html', events=events, search=search, status_filter=status_filter)
+        return render_template('admin/events.html', events=events, search=search, status_filter=status_filter)
     
     except Exception as e:
         log_admin_action(
@@ -1339,7 +1442,7 @@ def admin_content():
             success=True
         )
         
-        return render_template('admin_content.html')
+        return render_template('admin/content.html')
     
     except Exception as e:
         log_admin_action(
@@ -1357,7 +1460,7 @@ def admin_content():
 def admin_roles():
     """Admin role management page"""
     try:
-        roles = Role.query.all() 
+        roles = AdminRole.query.all() 
         
         log_admin_action(
             action='VIEW_ROLES',
@@ -1365,7 +1468,7 @@ def admin_roles():
             success=True
         )
         
-        return render_template('admin_roles.html', roles=roles)
+        return render_template('admin/roles.html', roles=roles)
     
     except Exception as e:
         log_admin_action(
@@ -1388,7 +1491,7 @@ def admin_profile():
             success=True
         )
         
-        return render_template('admin_profile.html')
+        return render_template('admin/profile.html')
     
     except Exception as e:
         log_admin_action(
@@ -1415,7 +1518,7 @@ def admin_analytics():
             success=True
         )
         
-        return render_template('admin_analytics.html', analytics=analytics_data)
+        return render_template('admin/analytics.html', analytics=analytics_data)
     
     except Exception as e:
         log_admin_action(
@@ -1467,11 +1570,13 @@ def get_analytics_data():
         total_users = User.query.count()
         total_ngos = NGO.query.count()
         total_events = Event.query.count()
-        total_donations = db.session.query(db.func.sum(Donor.donation_amount)).scalar() or 0
+        # Donor model has no donation_amount column; use donor count as placeholder
+        # Donors (unique) as placeholder for donations
+        total_donations = db.session.query(db.func.count(db.func.distinct(Donor.user_id))).scalar() or 0
         
         # User growth (last 30 days)
         from datetime import datetime, timedelta
-        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+        thirty_days_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=30)
         recent_users = User.query.filter(User.created_at >= thirty_days_ago).count()
         user_growth_rate = (recent_users / total_users * 100) if total_users > 0 else 0
         
@@ -1480,7 +1585,7 @@ def get_analytics_data():
         event_participation_rate = (total_volunteers / total_users * 100) if total_users > 0 else 0
         
         # Donation conversion rate
-        donors = Donor.query.distinct(Donor.user_id).count()
+        donors = db.session.query(db.func.count(db.func.distinct(Donor.user_id))).scalar() or 0
         donation_conversion_rate = (donors / total_users * 100) if total_users > 0 else 0
         
         # Volunteer retention rate (simplified)
@@ -1493,7 +1598,7 @@ def get_analytics_data():
         role_data = [count for _, count in role_counts]
         
         # Registration trends (last 7 days)
-        seven_days_ago = datetime.utcnow() - timedelta(days=7)
+        seven_days_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=7)
         registration_data = []
         registration_labels = []
         for i in range(7):
@@ -1527,22 +1632,24 @@ def get_analytics_data():
             
             activity_labels.append(date.strftime('%a'))
         
-        # Top NGOs by activity
-        top_ngos_data = db.session.query(
+        # Top NGOs by number of events and average planned volunteer capacity (no rating field on Event)
+        from sqlalchemy import func
+        top_ngos_raw = db.session.query(
+            NGO.id,
             NGO.organization_name,
             func.count(Event.id).label('event_count'),
-            func.avg(Event.max_volunteers).label('volunteer_count'),
-            func.avg(Event.rating).label('avg_rating')
+            func.avg(Event.max_volunteers).label('volunteer_capacity')
         ).join(Event, NGO.id == Event.ngo_id).group_by(NGO.id).order_by(func.desc('event_count')).limit(5).all()
-        
-        top_ngos = []
-        for ngo in top_ngos_data:
-            top_ngos.append({
-                'name': ngo.organization_name,
-                'event_count': ngo.event_count,
-                'volunteer_count': int(ngo.volunteer_count or 0),
-                'avg_rating': float(ngo.avg_rating or 0)
-            })
+
+        top_ngos = [
+            {
+                'id': r.id,
+                'name': r.organization_name,
+                'event_count': r.event_count,
+                'volunteer_count': int(r.volunteer_capacity or 0),
+            }
+            for r in top_ngos_raw
+        ]
         
         # Recent activities
         recent_activities = AdminAuditLog.query.order_by(AdminAuditLog.timestamp.desc()).limit(10).all()
@@ -1607,7 +1714,7 @@ def get_user_growth_data():
         func.date_format(User.created_at, '%Y-%m').label('month'),
         func.count(User.id).label('count')
     ).filter(
-        User.created_at >= datetime.utcnow() - timedelta(days=365)
+        User.created_at >= datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=365)
     ).group_by('month').order_by('month').all()
     
     return [{'month': item.month, 'count': item.count} for item in user_data]
@@ -1640,13 +1747,12 @@ def get_donation_trends_data():
     
     donation_data = db.session.query(
         func.date_format(Donor.created_at, '%Y-%m').label('month'),
-        func.count(Donor.id).label('count'),
-        func.sum(Donor.donation_amount).label('total')
+        func.count(Donor.id).label('count')
     ).filter(
-        Donor.created_at >= datetime.utcnow() - timedelta(days=365)
+        Donor.created_at >= datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=365)
     ).group_by('month').order_by('month').all()
     
-    return [{'month': item.month, 'count': item.count, 'total': float(item.total or 0)} for item in donation_data]
+    return [{'month': item.month, 'count': item.count, 'total': 0.0} for item in donation_data]
 
 def get_user_roles_distribution():
     """Get user roles distribution"""
@@ -1663,7 +1769,7 @@ def get_platform_usage_data():
     """Get platform usage statistics"""
     return {
         'total_page_views': 0,  # Will implement with analytics
-        'unique_visitors': User.query.filter(User.last_login >= datetime.utcnow() - timedelta(days=30)).count(),
+        'unique_visitors': User.query.filter(User.last_login >= (datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=30))).count(),
         'avg_session_duration': '15:30',  # Will implement with analytics
         'bounce_rate': '45%'  # Will implement with analytics
     }

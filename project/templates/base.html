@@ -398,6 +398,7 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+    {% block navbar %}
     <nav class="navbar">
         <div class="nav-container">
             <a href="{{ url_for('index') }}" class="logo">
@@ -421,6 +422,7 @@
             </ul>
         </div>
     </nav>
+    {% endblock %}
 
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -436,6 +438,7 @@
 
     {% block content %}{% endblock %}
 
+    {% block site_footer %}
     <footer class="footer">
         <div class="footer-content">
             <div>
@@ -455,6 +458,7 @@
             </div>
         </div>
     </footer>
+    {% endblock %}
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.js"></script>
     {% block extra_js %}{% endblock %}
