@@ -64,7 +64,9 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Users ({{ users.total }})</h5>
-                    <div>
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('admin_users_unverified') }}" class="btn btn-warning btn-sm"><i class="fas fa-user-check"></i> Unverified Only</a>
+                        <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-list"></i> All Users</a>
                         <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addUserModal">
                             <i class="fas fa-plus"></i> Add User
                         </button>
@@ -74,6 +76,11 @@
                     </div>
                 </div>
                 <div class="card-body p-0">
+                    {% if status_filter == 'unverified' %}
+                    <div class="alert alert-warning m-3 py-2 px-3">
+                        Showing only unverified users. Use the Verify action to approve accounts.
+                    </div>
+                    {% endif %}
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
                             <thead class="table-light">
@@ -129,21 +136,23 @@
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm" role="group">
-                                            <a href="{{ url_for('admin_user_profile', user_id=user.id) }}" class="btn btn-outline-primary" title="View Profile">
+                                            <button type="button" class="btn btn-outline-primary" title="View Profile (coming soon)" aria-label="View Profile" disabled>
                                                 <i class="fas fa-eye"></i>
-                                            </a>
+                                            </button>
                                             {% if not user.is_verified %}
-                                            <button type="button" class="btn btn-outline-success" title="Verify User" 
-                                                    onclick="verifyUser({{ user.id }}, '{{ user.email }}')">
+                                            <button type="button" class="btn btn-success" title="Verify User" aria-label="Verify User"
+                                                    onclick="verifyUser({{ user.id }}, {{ user.email|tojson }})">
                                                 <i class="fas fa-check"></i>
                                             </button>
                                             {% endif %}
-                                            <button type="button" class="btn btn-outline-{{ 'danger' if user.is_active else 'success' }}" title="{{ 'Deactivate' if user.is_active else 'Activate' }}"
-                                                    onclick="toggleUserStatus({{ user.id }}, {{ user.is_active|lower }}, '{{ user.email }}')">
+                                            <button type="button" class="btn btn-{{ 'danger' if user.is_active else 'success' }}" 
+                                                    title="{{ 'Deactivate' if user.is_active else 'Activate' }}" 
+                                                    aria-label="{{ 'Deactivate' if user.is_active else 'Activate' }}"
+                                                    onclick="toggleUserStatus({{ user.id }}, {{ user.is_active|tojson }}, {{ user.email|tojson }})">
                                                 <i class="fas fa-{{ 'ban' if user.is_active else 'check' }}"></i>
                                             </button>
-                                            <button type="button" class="btn btn-outline-danger" title="Delete User"
-                                                    onclick="deleteUser({{ user.id }}, '{{ user.email }}')">
+                                            <button type="button" class="btn btn-outline-danger" title="Delete User" aria-label="Delete User"
+                                                    onclick="deleteUser({{ user.id }}, {{ user.email|tojson }})">
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </div>
@@ -201,6 +210,119 @@
             </div>
         </div>
     </div>
+    
+    <!-- Page Scripts: user actions -->
+    <script>
+    function toggleUserStatus(userId, currentStatus, email) {
+        const action = currentStatus ? 'deactivate' : 'activate';
+        if (confirm(`Are you sure you want to ${action} user ${email}?`)) {
+            fetch(`/admin/users/${userId}/toggle-status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({})
+            })
+            .then(async (response) => {
+                const ct = response.headers.get('content-type') || '';
+                if (ct.includes('application/json')) {
+                    const data = await response.json();
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + (data.message || 'Unknown error'));
+                    }
+                } else if (response.ok) {
+                    // Fallback: non-JSON but success status
+                    location.reload();
+                } else {
+                    const text = await response.text();
+                    console.error('Toggle status failed:', response.status, text);
+                    alert('Error updating user status.');
+                }
+            })
+            .catch(error => {
+                console.error('Toggle status exception:', error);
+                alert('An error occurred. Please try again.');
+            });
+        }
+    }
+    
+    function verifyUser(userId, email) {
+        if (confirm(`Are you sure you want to verify user ${email}?`)) {
+            fetch(`/admin/users/${userId}/verify`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({})
+            })
+            .then(async (response) => {
+                const ct = response.headers.get('content-type') || '';
+                if (ct.includes('application/json')) {
+                    const data = await response.json();
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + (data.message || 'Unknown error'));
+                    }
+                } else if (response.ok) {
+                    location.reload();
+                } else {
+                    const text = await response.text();
+                    console.error('Verify failed:', response.status, text);
+                    alert('Error verifying user.');
+                }
+            })
+            .catch(error => {
+                console.error('Verify exception:', error);
+                alert('An error occurred. Please try again.');
+            });
+        }
+    }
+    
+    function deleteUser(userId, email) {
+        if (confirm(`Are you sure you want to delete user ${email}? This action cannot be undone.`)) {
+            fetch(`/admin/users/${userId}/delete`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({})
+            })
+            .then(async (response) => {
+                const ct = response.headers.get('content-type') || '';
+                if (ct.includes('application/json')) {
+                    const data = await response.json();
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Error: ' + (data.message || 'Unknown error'));
+                    }
+                } else if (response.ok) {
+                    location.reload();
+                } else {
+                    const text = await response.text();
+                    console.error('Delete failed:', response.status, text);
+                    alert('Error deleting user.');
+                }
+            })
+            .catch(error => {
+                console.error('Delete exception:', error);
+                alert('An error occurred. Please try again.');
+            });
+        }
+    }
+    
+    function exportUsers() {
+        const searchParams = new URLSearchParams(window.location.search);
+        window.location.href = `/admin/users/export?${searchParams.toString()}`;
+    }
+    </script>
+
 </div>
 
 <!-- Add User Modal -->
@@ -248,84 +370,4 @@
         </div>
     </div>
     </div>
-
-{% endblock %}
-
-{% block scripts %}
-<script>
-function toggleUserStatus(userId, currentStatus, email) {
-    const action = currentStatus ? 'deactivate' : 'activate';
-    if (confirm(`Are you sure you want to ${action} user ${email}?`)) {
-        fetch(`/admin/users/${userId}/toggle-status`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('Error: ' + data.message);
-            }
-        })
-        .catch(error => {
-            alert('An error occurred. Please try again.');
-        });
-    }
-}
-
-function verifyUser(userId, email) {
-    if (confirm(`Are you sure you want to verify user ${email}?`)) {
-        fetch(`/admin/users/${userId}/verify`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('Error: ' + data.message);
-            }
-        })
-        .catch(error => {
-            alert('An error occurred. Please try again.');
-        });
-    }
-}
-
-function deleteUser(userId, email) {
-    if (confirm(`Are you sure you want to delete user ${email}? This action cannot be undone.`)) {
-        fetch(`/admin/users/${userId}/delete`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('Error: ' + data.message);
-            }
-        })
-        .catch(error => {
-            alert('An error occurred. Please try again.');
-        });
-    }
-}
-
-function exportUsers() {
-    const searchParams = new URLSearchParams(window.location.search);
-    window.location.href = `/admin/users/export?${searchParams.toString()}`;
-}
-</script>
 {% endblock %}

@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, make_response
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response, session
+from sqlalchemy import or_
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_wtf.csrf import CSRFProtect, CSRFError, generate_csrf
@@ -148,6 +149,16 @@ def ensure_super_admin(user):
         # Do not break the request if role assignment fails
         app.logger.error(f"Failed to ensure Super Admin role: {_e}")
 
+# Ensure admin role/permissions are present before handling any /admin route
+@app.before_request
+def _ensure_admin_permissions_before_request():
+    try:
+        if request.path.startswith('/admin') and current_user.is_authenticated and getattr(current_user, 'role', None) == 'admin':
+            ensure_super_admin(current_user)
+    except Exception as _e:
+        # Never block the request here; just log
+        app.logger.error(f"before_request ensure_admin error: {_e}")
+
 # Friendly CSRF error handler
 @app.errorhandler(CSRFError)
 def handle_csrf_error(e):
@@ -165,7 +176,56 @@ def index():
     # Allow bypass via query when an admin page error redirected here
     if request.args.get('no_admin_redirect') != '1' and current_user.is_authenticated and getattr(current_user, 'role', None) == 'admin':
         return redirect(url_for('admin_dashboard'))
-    return render_template('index.html')
+    # Show a simple landing (or login) page for non-admins / anonymous
+    try:
+        return render_template('index.html')
+    except Exception:
+        # Fallback: if template missing, go to dashboard guard
+        return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/users/unverified')
+@admin_required
+@admin_permission_required('manage_users')
+@rate_limit_admin_requests(max_requests=50, window_minutes=60)
+def admin_users_unverified():
+    """Admin view: show only unverified users to streamline verification"""
+    try:
+        page = request.args.get('page', 1, type=int)
+        search = request.args.get('search', '')
+
+        query = User.query.filter(User.is_verified == False)
+
+        if search:
+            query = query.filter(
+                or_(
+                    User.first_name.ilike(f'%{search}%'),
+                    User.last_name.ilike(f'%{search}%'),
+                    User.email.ilike(f'%{search}%')
+                )
+            )
+
+        users = query.paginate(page=page, per_page=20, error_out=False)
+
+        log_admin_action(
+            action='VIEW_UNVERIFIED_USERS',
+            resource_type='USER_MANAGEMENT',
+            success=True
+        )
+
+        return render_template('admin/users.html', users=users,
+                               search=search, role_filter='', status_filter='unverified')
+    except Exception as e:
+        import traceback
+        app.logger.error(f"admin_users_unverified error: {e}")
+        app.logger.error(traceback.format_exc())
+        log_admin_action(
+            action='VIEW_UNVERIFIED_USERS_ERROR',
+            resource_type='USER_MANAGEMENT',
+            success=False,
+            error_message=str(e)
+        )
+        flash('Error loading unverified users', 'error')
+        return redirect(url_for('admin_users'))
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -466,6 +526,215 @@ def admin_test_email():
             flash('MAIL_USERNAME is not configured and no ?to=email provided', 'error')
             return redirect(url_for('admin_dashboard'))
 
+        msg = MailMessage(
+            subject='NGO Connect Test Email',
+            sender=app.config.get('MAIL_USERNAME'),
+            recipients=[to_addr],
+            body='This is a test email from NGO Connect.'
+        )
+        mail.send(msg)
+        flash(f'Test email sent to {to_addr}', 'success')
+    except Exception as e:
+        flash(f'Failed to send test email: {str(e)}', 'error')
+    return redirect(url_for('admin_dashboard'))
+
+@app.route('/admin/ngos/add', methods=['POST'])
+@admin_required
+@admin_permission_required('manage_ngos')
+@rate_limit_admin_requests(max_requests=20, window_minutes=60)
+def admin_add_ngo():
+    """Create an NGO and its admin user"""
+    try:
+        org_name = request.form.get('organization_name')
+        email = request.form.get('email')
+        first_name = request.form.get('first_name')
+        last_name = request.form.get('last_name')
+        city = request.form.get('city')
+        category = request.form.get('category')
+        if not all([org_name, email, first_name, last_name]):
+            flash('Organization name, email, first and last name are required', 'error')
+            return redirect(url_for('admin_ngos'))
+        
+        # Create user
+        if User.query.filter_by(email=email).first():
+            flash('A user with this email already exists', 'error')
+            return redirect(url_for('admin_ngos'))
+        temp_password = 'TempPass123!'
+        user = User(email=email, role='ngo', first_name=first_name, last_name=last_name, is_verified=True, is_active=True)
+        user.password_hash = generate_password_hash(temp_password)
+        db.session.add(user)
+        db.session.commit()
+
+        # Create NGO tied to user
+        ngo = NGO(
+            user_id=user.id,
+            organization_name=org_name,
+            city=city,
+            category=category,
+            is_verified=False
+        )
+        db.session.add(ngo)
+        db.session.commit()
+
+        log_admin_action(action='CREATE_NGO', resource_type='NGO', resource_id=ngo.id, details={'organization_name': org_name})
+        flash('NGO created successfully', 'success')
+        return redirect(url_for('admin_ngos'))
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error creating NGO: {str(e)}', 'error')
+        return redirect(url_for('admin_ngos'))
+
+@app.route('/admin/ngos/<int:ngo_id>/approve', methods=['POST'])
+@admin_required
+@admin_permission_required('manage_ngos')
+def admin_approve_ngo(ngo_id):
+    try:
+        ngo = NGO.query.get_or_404(ngo_id)
+        ngo.is_verified = True
+        db.session.commit()
+        log_admin_action(action='APPROVE_NGO', resource_type='NGO', resource_id=ngo_id)
+        return jsonify({'success': True, 'message': 'NGO approved'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/admin/ngos/<int:ngo_id>/toggle-status', methods=['POST'])
+@admin_required
+@admin_permission_required('manage_ngos')
+def admin_toggle_ngo_status(ngo_id):
+    try:
+        ngo = NGO.query.get_or_404(ngo_id)
+        payload = request.get_json(silent=True) or {}
+        status = payload.get('status')
+        if status == 'active':
+            ngo.is_verified = True
+        else:
+            ngo.is_verified = False
+        db.session.commit()
+        log_admin_action(action='TOGGLE_NGO_STATUS', resource_type='NGO', resource_id=ngo_id, details={'is_verified': ngo.is_verified})
+        return jsonify({'success': True, 'message': 'NGO status updated'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/admin/ngos/<int:ngo_id>/delete', methods=['DELETE'])
+@admin_required
+@admin_permission_required('manage_ngos')
+def admin_delete_ngo(ngo_id):
+    try:
+        ngo = NGO.query.get_or_404(ngo_id)
+        db.session.delete(ngo)
+        db.session.commit()
+        log_admin_action(action='DELETE_NGO', resource_type='NGO', resource_id=ngo_id)
+        return jsonify({'success': True, 'message': 'NGO deleted'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/admin/ngos/export')
+@admin_required
+@admin_permission_required('export_data')
+def export_ngos():
+    try:
+        import csv, io
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['ID', 'Organization', 'Email', 'City', 'Category', 'Verified', 'Created At'])
+        for ngo in NGO.query.order_by(NGO.created_at.desc()).all():
+            writer.writerow([ngo.id, ngo.organization_name, ngo.email or '', ngo.city or '', ngo.category or '', 'Yes' if ngo.is_verified else 'No', ngo.created_at.strftime('%Y-%m-%d') if ngo.created_at else ''])
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['Content-Disposition'] = f'attachment; filename=ngos_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        return response
+    except Exception as e:
+        flash(f'Error exporting NGOs: {str(e)}', 'error')
+        return redirect(url_for('admin_ngos'))
+
+@app.route('/admin/events/add', methods=['POST'])
+@admin_required
+@admin_permission_required('manage_events')
+def admin_add_event():
+    try:
+        title = request.form.get('title')
+        description = request.form.get('description')
+        location = request.form.get('location')
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+        category = request.form.get('category')
+        ngo_id = request.form.get('ngo_id', type=int)
+        max_volunteers = request.form.get('max_volunteers', type=int) or 0
+        if not all([title, start_date, end_date, ngo_id]):
+            flash('Title, start date, end date and NGO are required', 'error')
+            return redirect(url_for('admin_events'))
+        event = Event(
+            ngo_id=ngo_id,
+            title=title,
+            description=description,
+            location=location,
+            start_date=datetime.strptime(start_date, '%Y-%m-%d'),
+            end_date=datetime.strptime(end_date, '%Y-%m-%d'),
+            category=category,
+            max_volunteers=max_volunteers,
+            is_active=True,
+            status='active'
+        )
+        db.session.add(event)
+        db.session.commit()
+        log_admin_action(action='CREATE_EVENT', resource_type='EVENT', resource_id=event.id)
+        flash('Event created successfully', 'success')
+        return redirect(url_for('admin_events'))
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error creating event: {str(e)}', 'error')
+        return redirect(url_for('admin_events'))
+
+@app.route('/admin/events/<int:event_id>/cancel', methods=['POST'])
+@admin_required
+@admin_permission_required('manage_events')
+def admin_cancel_event(event_id):
+    try:
+        event = Event.query.get_or_404(event_id)
+        event.status = 'cancelled'
+        event.is_active = False
+        db.session.commit()
+        log_admin_action(action='CANCEL_EVENT', resource_type='EVENT', resource_id=event_id)
+        return jsonify({'success': True, 'message': 'Event cancelled'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/admin/events/<int:event_id>/delete', methods=['DELETE'])
+@admin_required
+@admin_permission_required('manage_events')
+def admin_delete_event(event_id):
+    try:
+        event = Event.query.get_or_404(event_id)
+        db.session.delete(event)
+        db.session.commit()
+        log_admin_action(action='DELETE_EVENT', resource_type='EVENT', resource_id=event_id)
+        return jsonify({'success': True, 'message': 'Event deleted'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/admin/events/export')
+@admin_required
+@admin_permission_required('export_data')
+def export_events():
+    try:
+        import csv, io
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['ID', 'Title', 'NGO', 'Category', 'Start', 'End', 'Status', 'Active'])
+        for ev in Event.query.order_by(Event.created_at.desc()).all():
+            writer.writerow([ev.id, ev.title, ev.ngo.organization_name if ev.ngo else '', ev.category or '', ev.start_date.strftime('%Y-%m-%d'), ev.end_date.strftime('%Y-%m-%d'), ev.status or '', 'Yes' if ev.is_active else 'No'])
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['Content-Disposition'] = f'attachment; filename=events_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        return response
+    except Exception as e:
+        flash(f'Error exporting events: {str(e)}', 'error')
+        return redirect(url_for('admin_events'))
         msg = MailMessage(
             subject='NGO Connect Test Email',
             sender=app.config.get('MAIL_USERNAME'),
@@ -830,6 +1099,10 @@ def search_ngos_api():
     try:
         search_term = request.args.get('q', '')
         category = request.args.get('category', '') or None
+        # Normalize common category casing coming from UI (donor page uses lowercase)
+        if category:
+            category = category.strip()
+            category = category.title()
         city = request.args.get('city', '') or None
         
         ngos = queries.search_ngos(search_term, category=category, city=city)
@@ -860,10 +1133,22 @@ def search_events_api():
     try:
         search_term = request.args.get('q', '')
         category = request.args.get('category', '') or None
+        # Normalize category to title-case to match stored values if needed
+        if category:
+            category = category.strip().title()
         location = request.args.get('location', '') or None
+        start_date_str = request.args.get('start_date', '')
         
         events = queries.search_events(search_term, category=category, location=location)
-        
+        # Optional filter by start_date (YYYY-MM-DD) if provided by volunteer page
+        if start_date_str:
+            try:
+                from datetime import datetime as _dt
+                start_date_filter = _dt.strptime(start_date_str, '%Y-%m-%d').date()
+                events = [ev for ev in events if (getattr(ev, 'start_date', None) and ev.start_date.date() >= start_date_filter)]
+            except Exception:
+                pass
+
         return jsonify([{
             'id': event.id,
             'title': event.title,
@@ -876,8 +1161,8 @@ def search_events_api():
             'required_skills': json.loads(event.required_skills) if event.required_skills else [],
             'is_active': event.is_active,
             'ngo_id': event.ngo_id,
-            'ngo_name': NGO.query.get(event.ngo_id).organization_name,
-            'ngo_logo': NGO.query.get(event.ngo_id).logo_url or ''
+            'ngo_name': (NGO.query.get(event.ngo_id).organization_name if NGO.query.get(event.ngo_id) else ''),
+            'ngo_logo': (NGO.query.get(event.ngo_id).logo if NGO.query.get(event.ngo_id) else '')
         } for event in events])
     except Exception as e:
         return jsonify({'error': f'Search failed: {str(e)}'}), 500
@@ -942,6 +1227,28 @@ def admin_dashboard():
             ).count(),
             'pending_reports': 0  # Will be implemented with reporting system
         }
+
+        # Additional user insights for dashboard widgets
+        last_7_days = now_utc - timedelta(days=7)
+        last_30_days = now_utc - timedelta(days=30)
+
+        user_insights = {
+            'by_role': {
+                'admin': User.query.filter_by(role='admin').count(),
+                'ngo': User.query.filter_by(role='ngo').count(),
+                'volunteer': User.query.filter_by(role='volunteer').count(),
+                'donor': User.query.filter_by(role='donor').count(),
+            },
+            'verified_count': User.query.filter_by(is_verified=True).count(),
+            'unverified_count': User.query.filter_by(is_verified=False).count(),
+            'active_count': User.query.filter_by(is_active=True).count(),
+            'inactive_count': User.query.filter_by(is_active=False).count(),
+            'new_last_7_days': User.query.filter(User.created_at >= last_7_days).count(),
+            'new_last_30_days': User.query.filter(User.created_at >= last_30_days).count(),
+        }
+
+        # Recent users list (latest 10)
+        recent_users = User.query.order_by(User.created_at.desc()).limit(10).all()
         
         # Get recent admin activity
         recent_activity = AdminAuditLog.query.filter_by(
@@ -972,7 +1279,9 @@ def admin_dashboard():
         return render_template('admin/dashboard.html', 
                              stats=stats, 
                              recent_activity=activity_data,
-                             admin_permissions=admin_permissions)
+                             admin_permissions=admin_permissions,
+                             user_insights=user_insights,
+                             recent_users=recent_users)
     
     except Exception as e:
         log_admin_action(
@@ -1002,7 +1311,7 @@ def admin_users():
         
         if search:
             query = query.filter(
-                db.or_(
+                or_(
                     User.first_name.ilike(f'%{search}%'),
                     User.last_name.ilike(f'%{search}%'),
                     User.email.ilike(f'%{search}%')
@@ -1035,6 +1344,9 @@ def admin_users():
                              status_filter=status_filter)
     
     except Exception as e:
+        import traceback
+        app.logger.error(f"admin_users error: {e}")
+        app.logger.error(traceback.format_exc())
         log_admin_action(
             action='VIEW_USERS_ERROR',
             resource_type='USER_MANAGEMENT',
@@ -1048,9 +1360,6 @@ def admin_users():
 @admin_required
 @admin_permission_required('manage_users')
 @rate_limit_admin_requests(max_requests=20, window_minutes=60)
-@validate_admin_input({
-    'user_id': {'type': 'integer', 'required': True}
-})
 def toggle_user_status(user_id):
     """Toggle user active status"""
     try:
@@ -1256,9 +1565,6 @@ def update_admin_settings():
 @admin_required
 @admin_permission_required('manage_users')
 @rate_limit_admin_requests(max_requests=20, window_minutes=60)
-@validate_admin_input({
-    'user_id': {'type': 'integer', 'required': True}
-})
 def verify_user(user_id):
     """Verify a user account"""
     try:
@@ -1337,10 +1643,29 @@ def admin_audit_logs():
             success=True
         )
         
+        # Provide basic statistics for the summary cards (safe defaults if none)
+        try:
+            total_admin_actions = AdminAuditLog.query.count()
+            user_verifications = AdminAuditLog.query.filter(AdminAuditLog.action == 'VERIFY_USER').count()
+            user_deletions = AdminAuditLog.query.filter(AdminAuditLog.action == 'DELETE_USER').count()
+            data_exports = AdminAuditLog.query.filter(AdminAuditLog.action.ilike('%EXPORT%')).count()
+        except Exception:
+            total_admin_actions = 0
+            user_verifications = 0
+            user_deletions = 0
+            data_exports = 0
+
+        stats = {
+            'total_admin_actions': total_admin_actions,
+            'user_verifications': user_verifications,
+            'user_deletions': user_deletions,
+            'data_exports': data_exports,
+        }
+
         return render_template('admin/audit_logs.html', logs=logs, actions=actions,
                              admin_users=admin_users, admin_filter=admin_filter,
                              action_filter=action_filter, date_from=date_from,
-                             date_to=date_to)
+                             date_to=date_to, stats=stats)
     
     except Exception as e:
         log_admin_action(
@@ -1361,15 +1686,20 @@ def admin_ngos():
         page = request.args.get('page', 1, type=int)
         search = request.args.get('search', '')
         status_filter = request.args.get('status', '')
+        category_filter = request.args.get('category', '')
         
-        # Build query
+        # Build query (use actual model fields)
         query = NGO.query
         
         if search:
-            query = query.filter(NGO.name.contains(search))
+            query = query.filter(NGO.organization_name.ilike(f'%{search}%'))
         
         if status_filter:
-            query = query.filter(NGO.status == status_filter)
+            if status_filter == 'active':
+                query = query.filter(NGO.is_verified == True)
+            elif status_filter in ('pending', 'suspended', 'rejected'):
+                # Map all non-active to not verified for now (no status field on model)
+                query = query.filter(NGO.is_verified == False)
         
         ngos = query.paginate(page=page, per_page=20, error_out=False)
         
@@ -1379,7 +1709,7 @@ def admin_ngos():
             success=True
         )
         
-        return render_template('admin/ngos.html', ngos=ngos, search=search, status_filter=status_filter)
+        return render_template('admin/ngos.html', ngos=ngos, search=search, status_filter=status_filter, category_filter=category_filter)
     
     except Exception as e:
         log_admin_action(
@@ -1400,17 +1730,22 @@ def admin_events():
         page = request.args.get('page', 1, type=int)
         search = request.args.get('search', '')
         status_filter = request.args.get('status', '')
+        category_filter = request.args.get('category', '')
         
         # Build query
         query = Event.query
         
         if search:
-            query = query.filter(Event.title.contains(search))
+            query = query.filter(Event.title.ilike(f'%{search}%'))
+        
+        if category_filter:
+            query = query.filter(Event.category == category_filter)
         
         if status_filter:
             query = query.filter(Event.status == status_filter)
         
         events = query.paginate(page=page, per_page=20, error_out=False)
+        all_ngos = NGO.query.order_by(NGO.organization_name.asc()).all()
         
         log_admin_action(
             action='VIEW_EVENTS',
@@ -1418,7 +1753,7 @@ def admin_events():
             success=True
         )
         
-        return render_template('admin/events.html', events=events, search=search, status_filter=status_filter)
+        return render_template('admin/events.html', events=events, search=search, status_filter=status_filter, category_filter=category_filter, all_ngos=all_ngos)
     
     except Exception as e:
         log_admin_action(
@@ -1441,8 +1776,26 @@ def admin_content():
             resource_type='CONTENT',
             success=True
         )
-        
-        return render_template('admin/content.html')
+
+        # Provide safe defaults so the template can render even without content tables/models
+        pages = []
+        blog_posts = []
+        faqs = []
+        newsletter_subscribers = []
+        newsletter_stats = {
+            'total': 0,
+            'active': 0,
+            'last_sent': None,
+        }
+
+        return render_template(
+            'admin/content.html',
+            pages=pages,
+            blog_posts=blog_posts,
+            faqs=faqs,
+            newsletter_subscribers=newsletter_subscribers,
+            newsletter_stats=newsletter_stats,
+        )
     
     except Exception as e:
         log_admin_action(
@@ -1460,15 +1813,91 @@ def admin_content():
 def admin_roles():
     """Admin role management page"""
     try:
-        roles = AdminRole.query.all() 
-        
+        roles = AdminRole.query.all()
+
+        # Build view-model with fields the template expects
+        roles_vm = []
+        for r in roles:
+            try:
+                perms_dict = r.get_permissions() or {}
+                permission_count = len([k for k, v in perms_dict.items() if v])
+            except Exception:
+                perms_dict = {}
+                permission_count = 0
+
+            try:
+                user_count = AdminUserRole.query.filter_by(role_id=r.id, is_active=True).count()
+            except Exception:
+                user_count = 0
+
+            roles_vm.append({
+                'id': r.id,
+                'name': r.name,
+                'display_name': r.name,
+                'description': r.description or '',
+                'user_count': user_count,
+                'permission_count': permission_count,
+                'is_active': bool(r.is_active),
+                'is_system': r.name in ['Super Admin'],
+                'permissions': perms_dict,
+            })
+
+        # Role statistics
+        role_stats = {
+            'total': len(roles_vm),
+            'active': sum(1 for rv in roles_vm if rv['is_active']),
+            'system': sum(1 for rv in roles_vm if rv['is_system']),
+            'custom': sum(1 for rv in roles_vm if not rv['is_system']),
+        }
+
+        # Permission categories with known permissions used across the app
+        all_permissions = [
+            ('User Management', 'manage_users', 'Create, update, and manage users'),
+            ('User Management', 'create_users', 'Create new users'),
+            ('User Management', 'delete_users', 'Delete users'),
+            ('NGO Management', 'manage_ngos', 'Approve and manage NGOs'),
+            ('Events', 'manage_events', 'Create and manage events'),
+            ('Content', 'manage_content', 'Manage CMS content'),
+            ('Analytics', 'view_analytics', 'View analytics dashboards'),
+            ('Audit', 'view_audit_logs', 'View admin audit logs'),
+            ('Roles', 'manage_roles', 'Manage admin roles and permissions'),
+            ('System', 'manage_settings', 'Manage system settings'),
+            ('System', 'export_data', 'Export data'),
+            ('Audit', 'manage_audit_logs', 'Maintain audit logs'),
+        ]
+
+        # Build categories with permissions; mark assigned for first role by name when editing via JS
+        permission_categories = []
+        categories_map = {}
+        # For marking assignment per role, we default to Super Admin's permissions if exists
+        super_admin = next((rv for rv in roles_vm if rv['name'] == 'Super Admin'), None)
+        assigned_lookup = (super_admin or {'permissions': {}})['permissions']
+
+        for cat, key, desc in all_permissions:
+            if cat not in categories_map:
+                categories_map[cat] = {
+                    'name': cat,
+                    'description': f'{cat} related permissions',
+                    'permissions': [],
+                }
+            categories_map[cat]['permissions'].append({
+                'id': key,  # string ID is fine for HTML element IDs
+                'display_name': key.replace('_', ' ').title(),
+                'description': desc,
+                'is_assigned': bool(assigned_lookup.get(key)),
+            })
+
+        for cat in categories_map.values():
+            cat['count'] = len(cat['permissions'])
+            permission_categories.append(cat)
+
         log_admin_action(
             action='VIEW_ROLES',
             resource_type='ROLE',
             success=True
         )
-        
-        return render_template('admin/roles.html', roles=roles)
+
+        return render_template('admin/roles.html', roles=roles_vm, role_stats=role_stats, permission_categories=permission_categories)
     
     except Exception as e:
         log_admin_action(
@@ -1779,9 +2208,6 @@ def get_platform_usage_data():
 @admin_required
 @admin_permission_required('delete_users')
 @rate_limit_admin_requests(max_requests=10, window_minutes=60)
-@validate_admin_input({
-    'user_id': {'type': 'integer', 'required': True}
-})
 def delete_user(user_id):
     """Delete a user"""
     try:
@@ -1805,7 +2231,7 @@ def delete_user(user_id):
     'first_name': {'required': True, 'min_length': 1, 'max_length': 50, 'pattern': r'^[a-zA-Z\s]+$'},
     'last_name': {'required': True, 'min_length': 1, 'max_length': 50, 'pattern': r'^[a-zA-Z\s]+$'},
     'email': {'required': True, 'type': 'email', 'max_length': 120},
-    'role': {'required': True, 'pattern': r'^(ngo|volunteer|donor)$'},
+    'role': {'required': True, 'pattern': r'^(ngo|volunteer|donor|admin)$'},
     'phone': {'max_length': 20, 'pattern': r'^\+?[\d\s\-\(\)]+$'}
 })
 def admin_add_user():
@@ -1843,7 +2269,7 @@ def admin_add_user():
             is_verified=True,
             is_active=True
         )
-        new_user.set_password(password)
+        new_user.password_hash = generate_password_hash(password)
         
         db.session.add(new_user)
         db.session.commit()

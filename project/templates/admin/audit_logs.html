@@ -102,19 +102,19 @@
                                 {% for log in logs.items %}
                                 <tr>
                                     <td>
-                                        <small>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                                        <small>{{ (log.timestamp or '') and log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</small>
                                     </td>
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <div class="user-avatar me-2">
                                                 <div class="avatar-placeholder rounded-circle d-flex align-items-center justify-content-center" 
                                                      style="width: 30px; height: 30px; background-color: #e3f2fd; color: #1976d2; font-size: 12px;">
-                                                    {{ log.admin.first_name[0] if log.admin.first_name else 'A' }}
+                                                    {{ (log.admin_user.first_name[0] if log.admin_user and log.admin_user.first_name else 'A') }}
                                                 </div>
                                             </div>
                                             <div>
-                                                <div class="fw-bold">{{ log.admin.first_name }} {{ log.admin.last_name }}</div>
-                                                <small class="text-muted">{{ log.admin.email }}</small>
+                                                <div class="fw-bold">{{ log.admin_user.first_name if log.admin_user else '' }} {{ log.admin_user.last_name if log.admin_user else '' }}</div>
+                                                <small class="text-muted">{{ log.admin_user.email if log.admin_user else '' }}</small>
                                             </div>
                                         </div>
                                     </td>
@@ -125,8 +125,8 @@
                                     </td>
                                     <td>
                                         <div style="max-width: 300px;">
-                                            {% if log.details %}
-                                                <small class="text-muted">{{ log.details[:100] }}{% if log.details|length > 100 %}...{% endif %}</small>
+                                            {% if log.action_details %}
+                                                <small class="text-muted">{{ log.action_details[:100] }}{% if log.action_details|length > 100 %}...{% endif %}</small>
                                             {% else %}
                                                 <small class="text-muted">No additional details</small>
                                             {% endif %}

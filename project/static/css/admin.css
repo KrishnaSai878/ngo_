@@ -111,9 +111,10 @@
 }
 
 .sidebar-nav .nav-link.active {
-    background: rgba(52, 152, 219, 0.2);
-    color: white;
+    background: linear-gradient(90deg, rgba(52, 152, 219, 0.25) 0%, rgba(52, 152, 219, 0.1) 100%);
+    color: #ffffff;
     border-left-color: #3498db;
+    font-weight: 600;
 }
 
 .sidebar-nav .nav-link i {
@@ -238,19 +239,20 @@
 
 .quick-action-card .card {
     border: 1px solid #dee2e6;
-    border-radius: 8px;
-    transition: all 0.3s ease;
+    border-radius: 12px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     height: 100%;
+    background: #ffffff;
 }
 
 .quick-action-card .card:hover {
     border-color: #3498db;
-    box-shadow: 0 4px 8px rgba(52, 152, 219, 0.2);
-    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(52, 152, 219, 0.15);
+    transform: translateY(-3px);
 }
 
 .quick-action-card .card-body {
-    padding: 20px 15px;
+    padding: 22px 18px;
 }
 
 .quick-action-card p {
@@ -404,6 +406,43 @@
     font-size: 0.9rem;
 }
 
+/* Table Enhancements */
+.content-area .table {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.content-area .table thead th {
+    position: sticky;
+    top: 0;
+    background: #f8fafc;
+    z-index: 1;
+}
+
+.content-area .table tbody tr:hover {
+    background-color: #f5faff;
+}
+
+.content-area .table-striped > tbody > tr:nth-of-type(odd) > * {
+    background-color: #fbfdff;
+}
+
+/* Button polish */
+.btn-primary,
+.btn-success,
+.btn-danger,
+.btn-warning {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-primary:hover,
+.btn-success:hover,
+.btn-danger:hover,
+.btn-warning:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.08);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .sidebar {
@@ -497,22 +536,31 @@
     }
     
     .card {
-        background: #34495e;
-        color: white;
+        background: #1f2937;
+        color: #e5e7eb;
     }
     
     .stat-number,
     .activity-title,
     .pending-title,
     .health-title {
-        color: white;
+        color: #f3f4f6;
     }
     
     .stat-label,
     .activity-description,
     .activity-time,
     .pending-count {
-        color: #bdc3c7;
+        color: #9ca3af;
+    }
+
+    .content-area .table thead th {
+        background: #111827;
+        color: #e5e7eb;
+    }
+
+    .content-area .table tbody tr:hover {
+        background-color: rgba(59, 130, 246, 0.06);
     }
 }
 

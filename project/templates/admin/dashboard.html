@@ -79,6 +79,102 @@
         </div>
     </div>
 
+    <!-- User Insights -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4 class="mb-3">User Insights</h4>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="stat-icon"><i class="fas fa-user-shield text-primary"></i></div>
+                    <div class="stat-content">
+                        <h3 class="stat-number">{{ user_insights.by_role.admin }}</h3>
+                        <p class="stat-label">Admins</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="stat-icon"><i class="fas fa-building text-warning"></i></div>
+                    <div class="stat-content">
+                        <h3 class="stat-number">{{ user_insights.by_role.ngo }}</h3>
+                        <p class="stat-label">NGOs</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="stat-icon"><i class="fas fa-hands-helping text-info"></i></div>
+                    <div class="stat-content">
+                        <h3 class="stat-number">{{ user_insights.by_role.volunteer }}</h3>
+                        <p class="stat-label">Volunteers</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="stat-icon"><i class="fas fa-hand-holding-usd text-success"></i></div>
+                    <div class="stat-content">
+                        <h3 class="stat-number">{{ user_insights.by_role.donor }}</h3>
+                        <p class="stat-label">Donors</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-lg-4 col-md-6 mb-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="stat-icon"><i class="fas fa-badge-check text-success"></i></div>
+                    <div class="stat-content">
+                        <h5 class="mb-2">Verified</h5>
+                        <div>
+                            <span class="badge bg-success me-2">Verified: {{ user_insights.verified_count }}</span>
+                            <span class="badge bg-warning text-dark">Unverified: {{ user_insights.unverified_count }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-6 mb-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="stat-icon"><i class="fas fa-toggle-on text-primary"></i></div>
+                    <div class="stat-content">
+                        <h5 class="mb-2">Account Status</h5>
+                        <div>
+                            <span class="badge bg-primary me-2">Active: {{ user_insights.active_count }}</span>
+                            <span class="badge bg-secondary">Inactive: {{ user_insights.inactive_count }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-12 mb-3">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="stat-icon"><i class="fas fa-user-plus text-dark"></i></div>
+                    <div class="stat-content">
+                        <h5 class="mb-2">New Users</h5>
+                        <div>
+                            <span class="badge bg-dark me-2">7 days: {{ user_insights.new_last_7_days }}</span>
+                            <span class="badge bg-dark">30 days: {{ user_insights.new_last_30_days }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Quick Actions -->
     <div class="row mb-4">
         <div class="col-12">

@@ -14,6 +14,66 @@
                 </ol>
             </nav>
         </div>
+
+<!-- Add Event Modal -->
+<div class="modal fade" id="addEventModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add New Event</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('admin_add_event') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Title</label>
+              <input type="text" class="form-control" name="title" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">NGO</label>
+              <select class="form-select" name="ngo_id" required>
+                <option value="">Select NGO</option>
+                {% for ngo in all_ngos %}
+                <option value="{{ ngo.id }}">{{ ngo.organization_name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Description</label>
+              <textarea class="form-control" name="description" rows="3"></textarea>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Location</label>
+              <input type="text" class="form-control" name="location">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Start Date</label>
+              <input type="date" class="form-control" name="start_date" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">End Date</label>
+              <input type="date" class="form-control" name="end_date" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Category</label>
+              <input type="text" class="form-control" name="category">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Max Volunteers</label>
+              <input type="number" class="form-control" name="max_volunteers" min="1" step="1">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Event</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
     </div>
 
     <!-- Search and Filters -->
@@ -80,11 +140,10 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>Event</th>
-                                    <th>Date & Time</th>
+                                    <th>Dates</th>
                                     <th>Category</th>
                                     <th>Status</th>
-                                    <th>Participants</th>
-                                    <th>Organizer</th>
+                                    <th>NGO</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -115,46 +174,30 @@
                                     </td>
                                     <td>
                                         <small class="text-muted">
-                                            <i class="fas fa-calendar"></i> {{ event.event_date.strftime('%Y-%m-%d') }}<br>
-                                            <i class="fas fa-clock"></i> {{ event.start_time.strftime('%H:%M') if event.start_time else 'N/A' }}
+                                            <i class="fas fa-calendar"></i> {{ event.start_date.strftime('%Y-%m-%d') }} - {{ event.end_date.strftime('%Y-%m-%d') }}
                                         </small>
                                     </td>
                                     <td>
-                                        <span class="badge bg-{{ event.category_color }}">{{ event.category.title() }}</span>
+                                        <span class="badge bg-info">{{ (event.category or 'General')|title }}</span>
                                     </td>
                                     <td>
-                                        <span class="badge bg-{{ 'success' if event.status == 'upcoming' else 'primary' if event.status == 'ongoing' else 'secondary' if event.status == 'completed' else 'danger' }}">
-                                            {{ event.status.title() }}
+                                        <span class="badge bg-{{ 'success' if event.status == 'active' else 'secondary' if event.status == 'completed' else 'danger' if event.status == 'cancelled' else 'primary' }}">
+                                            {{ (event.status or 'active')|title }}
                                         </span>
                                     </td>
                                     <td>
-                                        <span class="badge bg-info">{{ event.current_participants }}/{{ event.max_participants }}</span>
-                                        <br>
-                                        <small class="text-muted">{{ event.volunteer_count }} volunteers</small>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            {% if event.organizer_type == 'ngo' %}
-                                                <span class="badge bg-success">NGO</span>
-                                                <br>
-                                                <small class="text-muted">{{ event.organizer_name }}</small>
-                                            {% else %}
-                                                <span class="badge bg-primary">User</span>
-                                                <br>
-                                                <small class="text-muted">{{ event.organizer_name }}</small>
-                                            {% endif %}
-                                        </div>
+                                        <small class="text-muted">{{ event.ngo.organization_name if event.ngo else 'N/A' }}</small>
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm" role="group">
-                                            <a href="{{ url_for('admin_event_details', event_id=event.id) }}" class="btn btn-outline-primary" title="View Details">
+                                            <a href="javascript:void(0)" class="btn btn-outline-primary disabled" title="View Details (coming soon)">
                                                 <i class="fas fa-eye"></i>
                                             </a>
-                                            {% if event.status == 'upcoming' %}
-                                            <button type="button" class="btn btn-outline-warning" title="Cancel Event" 
+                                            {% if event.status != 'cancelled' %}
+                                                <button type="button" class="btn btn-outline-warning" title="Cancel Event" 
                                                     onclick='cancelEvent({{ event.id }}, {{ event.title|tojson }})'>
-                                                <i class="fas fa-times"></i>
-                                            </button>
+                                                    <i class="fas fa-times"></i>
+                                                </button>
                                             {% endif %}
                                             <button type="button" class="btn btn-outline-danger" title="Delete Event"
                                                     onclick='deleteEvent({{ event.id }}, {{ event.title|tojson }})'>

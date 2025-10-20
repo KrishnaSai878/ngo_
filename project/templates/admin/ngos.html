@@ -16,6 +16,55 @@
         </div>
     </div>
 
+<!-- Add NGO Modal -->
+<div class="modal fade" id="addNGOModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New NGO</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_add_ngo') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Organization Name</label>
+                        <input type="text" class="form-control" name="organization_name" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Admin First Name</label>
+                            <input type="text" class="form-control" name="first_name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Admin Last Name</label>
+                            <input type="text" class="form-control" name="last_name" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Admin Email</label>
+                        <input type="email" class="form-control" name="email" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">City</label>
+                            <input type="text" class="form-control" name="city">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Category</label>
+                            <input type="text" class="form-control" name="category">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add NGO</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
     <!-- Search and Filters -->
     <div class="row mb-4">
         <div class="col-12">
@@ -83,26 +132,26 @@
                                         <div class="d-flex align-items-center">
                                             <div class="ngo-logo me-3">
                                                 {% if ngo.logo %}
-                                                    <img src="{{ ngo.logo }}" alt="{{ ngo.name }}" class="rounded" width="40" height="40">
+                                                    <img src="{{ ngo.logo }}" alt="{{ ngo.organization_name }}" class="rounded" width="40" height="40">
                                                 {% else %}
                                                     <div class="avatar-placeholder rounded d-flex align-items-center justify-content-center" 
                                                          style="width: 40px; height: 40px; background-color: #e3f2fd; color: #1976d2;">
-                                                        {{ ngo.name[0] if ngo.name else 'N' }}
+                                                        {{ (ngo.organization_name[0] if ngo.organization_name else 'N') }}
                                                     </div>
                                                 {% endif %}
                                             </div>
                                             <div>
-                                                <h6 class="mb-0">{{ ngo.name }}</h6>
-                                                <small class="text-muted">{{ ngo.description[:50] }}...</small>
+                                                <h6 class="mb-0">{{ ngo.organization_name }}</h6>
+                                                <small class="text-muted">{{ (ngo.description or '')[:50] }}{% if ngo.description and ngo.description|length > 50 %}...{% endif %}</small>
                                             </div>
                                         </div>
                                     </td>
                                     <td>
-                                        <span class="badge bg-info">{{ ngo.category }}</span>
+                                        <span class="badge bg-info">{{ ngo.category or 'General' }}</span>
                                     </td>
                                     <td>
-                                        <span class="badge bg-{{ 'success' if ngo.status == 'active' else 'warning' if ngo.status == 'pending' else 'danger' }}">
-                                            {{ ngo.status.title() }}
+                                        <span class="badge bg-{{ 'success' if ngo.is_verified else 'warning' }}">
+                                            {{ 'Active' if ngo.is_verified else 'Pending' }}
                                         </span>
                                     </td>
                                     <td>
@@ -110,27 +159,24 @@
                                     </td>
                                     <td>
                                         <small class="text-muted">
-                                            <i class="fas fa-envelope"></i> {{ ngo.contact_email }}<br>
-                                            <i class="fas fa-phone"></i> {{ ngo.contact_phone }}
+                                            <i class="fas fa-envelope"></i> {{ ngo.email or 'N/A' }}<br>
+                                            <i class="fas fa-phone"></i> {{ ngo.user.phone if ngo.user and ngo.user.phone else 'N/A' }}
                                         </small>
                                     </td>
                                     <td>
                                         <div class="btn-group btn-group-sm" role="group">
-                                            <a href="{{ url_for('admin_ngo_profile', ngo_id=ngo.id) }}" class="btn btn-outline-primary" title="View Profile">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            {% if ngo.status == 'pending' %}
-                                            <button type="button" class="btn btn-outline-success" title="Approve NGO" 
-                                                    onclick='approveNGO({{ ngo.id }}, {{ ngo.name|tojson }})'>
+                                            {% if not ngo.is_verified %}
+                                            <button type='button' class='btn btn-outline-success' title='Approve NGO' 
+                                                    onclick='approveNGO({{ ngo.id }}, {{ (ngo.organization_name or "NGO")|tojson }})'>
                                                 <i class="fas fa-check"></i>
                                             </button>
                                             {% endif %}
-                                            <button type="button" class="btn btn-outline-{{ 'danger' if ngo.status == 'active' else 'success' }}" title="{{ 'Suspend' if ngo.status == 'active' else 'Activate' }}"
-                                                    onclick='toggleNGOStatus({{ ngo.id }}, {{ ngo.status|tojson }}, {{ ngo.name|tojson }})'>
-                                                <i class="fas fa-{{ 'ban' if ngo.status == 'active' else 'check' }}"></i>
+                                            <button type='button' class='btn btn-outline-{{ 'danger' if ngo.is_verified else 'success' }}' title='{{ 'Suspend' if ngo.is_verified else 'Activate' }}'
+                                                    onclick='toggleNGOStatus({{ ngo.id }}, {{ ('active' if ngo.is_verified else 'pending')|tojson }}, {{ (ngo.organization_name or "NGO")|tojson }})'>
+                                                <i class="fas fa-{{ 'ban' if ngo.is_verified else 'check' }}"></i>
                                             </button>
-                                            <button type="button" class="btn btn-outline-danger" title="Delete NGO"
-                                                    onclick='deleteNGO({{ ngo.id }}, {{ ngo.name|tojson }})'>
+                                            <button type='button' class='btn btn-outline-danger' title='Delete NGO'
+                                                    onclick='deleteNGO({{ ngo.id }}, {{ (ngo.organization_name or "NGO")|tojson }})'>
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </div>
